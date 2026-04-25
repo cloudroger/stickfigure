@@ -1,0 +1,2776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StrokeFlow — Rhythmic Line Painter (WebGL)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Outfit:wght@300;400;600;700&display=swap');
+  :root {
+    --bg: #08080d;
+    --sf: #101018;
+    --sf2: #181824;
+    --sf3: #20202e;
+    --bd: #2a2a3d;
+    --bd2: #3a3a50;
+    --tx: #ddddf0;
+    --txd: #7878a0;
+    --txdd: #50506a;
+    --ac: #00d4ff;
+    --ac2: #ff2e7a;
+    --acg: #00ff88;
+    --gl: 0 0 15px rgba(0,212,255,.25);
+    --gl2: 0 0 30px rgba(0,212,255,.4), 0 0 60px rgba(0,212,255,.15);
+    --r: 6px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--tx); font-family:'Outfit',sans-serif; overflow:hidden; height:100vh; display:flex; flex-direction:column; }
+
+  header { display:flex; align-items:center; justify-content:space-between; padding:7px 14px; background:var(--sf); border-bottom:1px solid var(--bd); z-index:10; flex-shrink:0; flex-wrap:wrap; gap:6px; }
+  header h1 { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; background:linear-gradient(135deg, var(--ac), var(--ac2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .ha { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+  button { font-family:'Outfit',sans-serif; background:var(--sf2); color:var(--tx); border:1px solid var(--bd); padding:4px 10px; border-radius:var(--r); cursor:pointer; font-size:11px; transition:all .15s; white-space:nowrap; }
+  button:hover { border-color:var(--ac); box-shadow:var(--gl); color:#fff; }
+  button:active { transform:scale(.97); }
+  .bp { background:linear-gradient(135deg, #00b8e6, #00d4ff); color:#000; border-color:transparent; font-weight:600; }
+  .bp:hover { box-shadow:var(--gl2); }
+  .bd { border-color:var(--ac2); color:var(--ac2); }
+  .bd:hover { background:rgba(255,46,122,.1); box-shadow:0 0 15px rgba(255,46,122,.25); }
+  .bg { border-color:var(--acg); color:var(--acg); }
+  .bg:hover { background:rgba(0,255,136,.08); }
+
+  .bt-btn { background:linear-gradient(135deg, #ff6b00, #ff2e7a); color:#fff; border-color:transparent; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:5px 14px; font-size:11px; }
+  .bt-btn:hover { box-shadow:0 0 20px rgba(255,46,122,.5), 0 0 40px rgba(255,107,0,.3); }
+
+  .refresh-btn { background:linear-gradient(135deg, #ff9800, #ff5722); color:#fff; border-color:transparent; font-weight:700; }
+  .refresh-btn:hover { box-shadow:0 0 15px rgba(255,152,0,.5); }
+
+  .fs-btn { background:linear-gradient(135deg, #6c3baa, #9b59b6); color:#fff; border-color:transparent; font-weight:700; padding:5px 14px; font-size:11px; }
+  .fs-btn:hover { box-shadow:0 0 15px rgba(155,89,182,.5); }
+
+  .saf-btn { background:linear-gradient(135deg, #e65100, #ff9800); color:#fff; border-color:transparent; font-weight:600; font-size:9px; padding:2px 7px; margin-top:2px; letter-spacing:.3px; width:100%; }
+  .saf-btn:hover { box-shadow:0 0 12px rgba(255,152,0,.5); }
+
+  .fz { display:flex; align-items:center; gap:5px; }
+  .fz label { font-size:10px; color:var(--txd); font-weight:600; letter-spacing:.5px; }
+  .fb { font-size:10px; padding:3px 8px; }
+  .fn { font-size:9px; color:var(--ac); font-family:'JetBrains Mono',monospace; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sep { width:1px; height:20px; background:var(--bd); flex-shrink:0; }
+  input[type=file] { display:none; }
+
+  .fps-wrap, .mirror-wrap { display:flex; align-items:center; gap:4px; }
+  .fps-wrap label, .mirror-wrap label { font-size:9px; color:var(--txd); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.5px; }
+  .fps-wrap select { background:var(--sf2); border:1px solid var(--bd); color:var(--ac); font-size:10px; padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; cursor:pointer; }
+  .fps-wrap select:hover { border-color:var(--ac); }
+  .mirror-wrap select { background:var(--sf2); border:1px solid var(--bd); color:var(--acg); font-size:10px; padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; cursor:pointer; }
+  .mirror-wrap select:hover { border-color:var(--acg); }
+
+  .mc { display:flex; flex:1; overflow:hidden; }
+
+  .cp { flex:1; display:flex; flex-direction:column; border-right:1px solid var(--bd); min-width:0; }
+  .tb { display:flex; align-items:center; gap:5px; padding:5px 10px; background:var(--sf); border-bottom:1px solid var(--bd); flex-shrink:0; flex-wrap:wrap; }
+  .tb label { font-size:10px; color:var(--txd); font-family:'JetBrains Mono',monospace; }
+  .ni { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ac); margin-left:auto; }
+  .cw { flex:1; position:relative; overflow:hidden; background:#000; cursor:crosshair; }
+  .cw.eraser { cursor:cell; }
+  .cw.playing { cursor:default; }
+  canvas { width:100%; height:100%; display:block; touch-action:none; }
+
+  .rp { width:280px; display:flex; flex-direction:column; background:var(--sf); flex-shrink:0; overflow:hidden; }
+  .rp h3 { font-size:10px; font-weight:700; padding:8px 12px; border-bottom:1px solid var(--bd); text-transform:uppercase; letter-spacing:1.5px; color:var(--txd); flex-shrink:0; }
+  .pc { flex:1; overflow-y:auto; padding:6px; }
+  .pg { margin-bottom:3px; border:1px solid var(--bd); border-radius:var(--r); overflow:hidden; transition:border-color .15s; }
+  .pg.a { border-color:var(--ac); box-shadow:var(--gl); }
+  .pgh { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:var(--sf2); cursor:pointer; font-size:11px; font-weight:600; transition:background .1s; user-select:none; }
+  .pgh:hover { background:var(--sf3); }
+  .pgh::after { content:'▸'; color:var(--txd); font-size:10px; transition:transform .15s; }
+  .pg.a .pgh::after { transform:rotate(90deg); color:var(--ac); }
+  .pgb { padding:6px 8px; display:none; }
+  .pg.a .pgb { display:block; }
+  .sr { display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+  .sr label { font-size:9px; color:var(--txd); width:44px; text-align:right; font-family:'JetBrains Mono',monospace; }
+  .sr input[type=range] { flex:1; accent-color:var(--ac); height:3px; min-width:0; }
+  .sr input[type=number] { width:46px; background:var(--sf2); border:1px solid var(--bd); color:var(--ac); font-size:9px; font-family:'JetBrains Mono',monospace; padding:2px 3px; border-radius:4px; text-align:center; }
+  .sr select { background:var(--sf2); border:1px solid var(--bd); color:var(--ac); font-size:10px; padding:2px 4px; border-radius:4px; font-family:'JetBrains Mono',monospace; flex:1; }
+  .sr input[type=color] { width:28px; height:20px; border:1px solid var(--bd); background:var(--sf2); border-radius:3px; cursor:pointer; padding:1px; flex-shrink:0; }
+  .sr .chk { width:14px; height:14px; accent-color:var(--ac2); cursor:pointer; }
+  .hint { font-size:8px; color:var(--txdd); padding:2px 4px 4px; font-style:italic; line-height:1.3; }
+
+  /* TIMELINE */
+  .tp { height:160px; background:var(--sf); border-top:1px solid var(--bd); display:flex; flex-direction:column; flex-shrink:0; }
+  .tt { display:flex; align-items:center; gap:6px; padding:5px 10px; border-bottom:1px solid var(--bd); flex-shrink:0; flex-wrap:wrap; }
+  .tt button { padding:3px 10px; font-size:10px; }
+  .tDisp { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ac); margin-left:auto; letter-spacing:.5px; }
+
+  .sync-indicator {
+    font-family:'JetBrains Mono',monospace; font-size:9px; padding:2px 6px;
+    border-radius:3px; letter-spacing:.5px; margin-left:4px;
+  }
+  .sync-indicator.synced { color:var(--acg); background:rgba(0,255,136,.08); }
+  .sync-indicator.drifting { color:#ff6600; background:rgba(255,102,0,.08); }
+
+  .edit-box-label { font-size:9px; color:var(--txd); cursor:pointer; display:flex; align-items:center; gap:3px; user-select:none; }
+  .edit-box-label input { accent-color:var(--ac2); cursor:pointer; width:12px; height:12px; }
+
+  .group-bar { display:flex; align-items:center; gap:5px; padding:4px 10px; background:var(--sf2); border-bottom:1px solid var(--bd); flex-shrink:0; flex-wrap:wrap; }
+  .group-bar label { font-size:9px; color:var(--txd); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.5px; }
+  .group-bar select { background:var(--sf2); border:1px solid var(--bd); color:var(--tx); font-size:10px; padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; }
+  .group-bar input[type=text] { background:var(--sf); border:1px solid var(--bd); color:var(--ac); font-size:10px; padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; width:120px; }
+  .group-bar button { padding:2px 8px; font-size:9px; }
+  .grp-play-btn { background:linear-gradient(135deg, #7b2eff, #c02eff); color:#fff; border-color:transparent; font-weight:700; }
+  .grp-play-btn:hover { box-shadow:0 0 15px rgba(123,46,255,.5); }
+
+  .frame-strip-wrap { flex:1; overflow-x:auto; overflow-y:hidden; position:relative; display:flex; align-items:stretch; }
+  .frame-strip { display:flex; align-items:stretch; height:100%; padding:8px 6px; gap:4px; position:relative; }
+
+  .frame-card {
+    flex-shrink:0; width:130px; min-height:70px;
+    background:var(--sf2); border:1px solid var(--bd); border-radius:var(--r);
+    display:flex; flex-direction:column; cursor:pointer;
+    transition:all .15s; position:relative; overflow:hidden;
+  }
+  .frame-card:hover { border-color:var(--bd2); background:var(--sf3); }
+  .frame-card.active { border-color:var(--ac); box-shadow:var(--gl); background:var(--sf3); }
+  .frame-card.hasstrokes::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, var(--ac2), var(--ac));
+  }
+  .frame-card.in-group { border-left:3px solid var(--ac2); }
+
+  .fc-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:5px 8px 3px; font-size:9px; color:var(--txd);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .fc-idx { color:var(--ac); font-weight:700; font-size:10px; }
+  .fc-abs { color:var(--txdd); font-size:8px; }
+  .fc-grp { font-size:7px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60px; }
+  .fc-sc { font-size:8px; color:var(--ac2); font-weight:600; }
+
+  .fc-title {
+    padding:0 8px; font-size:10px; font-weight:600; color:var(--tx);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    min-height:16px; cursor:default; border-radius:3px;
+    transition: background .15s; user-select:none;
+  }
+  .fc-title-input {
+    padding:0 8px; font-size:10px; font-weight:600; color:var(--ac);
+    min-height:16px; width:100%;
+    background:var(--bg); border:1px solid var(--ac); border-radius:3px;
+    outline:none; font-family:'Outfit',sans-serif; box-shadow:var(--gl);
+  }
+
+  .fc-duration { margin:auto 8px 6px; display:flex; flex-direction:column; gap:2px; }
+  .fc-dur-row { display:flex; align-items:center; gap:3px; flex-wrap:nowrap; }
+  .fc-duration label {
+    font-size:8px; color:var(--txdd); font-family:'JetBrains Mono',monospace;
+    text-transform:uppercase; letter-spacing:.5px; flex-shrink:0;
+  }
+  .fc-dur-btn {
+    width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+    background:var(--sf3); border:1px solid var(--bd); color:var(--ac);
+    font-size:13px; font-weight:700; border-radius:4px; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; padding:0; line-height:1;
+    transition: all .12s; flex-shrink:0;
+  }
+  .fc-dur-btn:hover { border-color:var(--ac); box-shadow:var(--gl); background:var(--sf2); color:#fff; }
+  .fc-dur-btn:active { transform:scale(.9); }
+  .fc-dur-btn.locked { opacity:0.3; pointer-events:none; }
+  .fc-dur-input {
+    width:52px; background:var(--bg); border:1px solid var(--bd); color:var(--tx);
+    font-size:11px; padding:3px 4px; border-radius:4px;
+    font-family:'JetBrains Mono',monospace; text-align:center;
+    transition:border-color .15s; pointer-events:none; opacity:0.5; flex-shrink:0;
+  }
+  .fc-dur-input.editing { pointer-events:auto; opacity:1; border-color:var(--ac); box-shadow:var(--gl); }
+  .fc-dur-input:focus { border-color:var(--ac); outline:none; box-shadow:var(--gl); }
+  .fc-dur-unit { font-size:8px; color:var(--txdd); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
+
+  .fc-drift {
+    font-size:7px; color:var(--txdd); font-family:'JetBrains Mono',monospace;
+    padding:0 8px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .fc-drift.ahead { color:#ff6600; }
+  .fc-drift.behind { color:#00d4ff; }
+  .fc-drift.perfect { color:var(--acg); }
+
+  .mo { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:100; align-items:center; justify-content:center; }
+  .mo.sh { display:flex; }
+  .md { background:var(--sf); border:1px solid var(--bd); border-radius:10px; padding:24px; max-width:520px; width:92%; }
+  .md h2 { margin-bottom:12px; font-size:16px; text-align:center; }
+  .md p { font-size:12px; color:var(--txd); margin-bottom:10px; text-align:center; }
+  .ma { display:flex; gap:8px; justify-content:center; margin-top:16px; }
+
+  .bt-countdown {
+    font-size:120px; font-weight:700; text-align:center;
+    background:linear-gradient(135deg, var(--ac), var(--ac2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    line-height:1.1; margin:20px 0; font-family:'JetBrains Mono',monospace;
+  }
+  .bt-status { font-size:14px; text-align:center; color:var(--tx); margin:10px 0; font-family:'JetBrains Mono',monospace; }
+  .bt-beats { font-size:48px; font-weight:700; text-align:center; color:var(--acg); font-family:'JetBrains Mono',monospace; margin:10px 0; }
+  .bt-hint { font-size:11px; color:var(--txd); text-align:center; margin:8px 0; }
+  .bt-elapsed { font-size:12px; color:var(--ac); text-align:center; font-family:'JetBrains Mono',monospace; margin:4px 0; }
+  .bt-flash { animation: btFlash 0.15s ease-out; }
+  @keyframes btFlash {
+    0% { text-shadow: 0 0 40px rgba(0,255,136,.9), 0 0 80px rgba(0,255,136,.5); }
+    100% { text-shadow: none; }
+  }
+  .bt-group-row { display:flex; align-items:center; gap:8px; justify-content:center; margin-bottom:10px; flex-wrap:wrap; }
+  .bt-group-row label { font-size:11px; color:var(--txd); }
+  .bt-group-row select { background:var(--sf2); border:1px solid var(--bd); color:var(--tx); font-size:11px; padding:4px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; }
+
+  body.minimized header,
+  body.minimized .rp,
+  body.minimized .tp,
+  body.minimized .tb { display:none !important; }
+  body.minimized .cp { border-right:none; }
+  body.minimized .mc { flex:1; }
+
+  .fs-overlay {
+    display:none; position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    z-index:20; background:rgba(16,16,24,.85); border:1px solid var(--bd);
+    border-radius:10px; padding:6px 14px; backdrop-filter:blur(8px);
+    gap:8px; align-items:center;
+  }
+  body.minimized .fs-overlay { display:flex; }
+  .fs-overlay button { font-size:11px; padding:5px 12px; }
+  .fs-overlay .tDisp { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ac); letter-spacing:.5px; }
+  .drift-display {
+    font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--txdd);
+    padding:0 4px;
+  }
+
+  .mirror-divider {
+    position:absolute; top:0; bottom:0; left:50%; width:1px;
+    background:rgba(0,212,255,.15); z-index:2; pointer-events:none;
+    display:none;
+  }
+  .mirror-divider.visible { display:block; }
+
+  .gpu-badge {
+    position:absolute; top:6px; right:8px; z-index:5; pointer-events:none;
+    background:rgba(0,255,136,.12); border:1px solid rgba(0,255,136,.3);
+    color:var(--acg); font-family:'JetBrains Mono',monospace;
+    font-size:8px; padding:2px 6px; border-radius:3px; letter-spacing:.5px;
+    opacity:0; transition: opacity .3s;
+  }
+  .gpu-badge.show { opacity:1; }
+
+  ::-webkit-scrollbar { width:5px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--sf); }
+  ::-webkit-scrollbar-thumb { background:var(--bd); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--bd2); }
+
+  .spd-wrap { display:flex; align-items:center; gap:4px; }
+  .spd-wrap label { font-size:9px; color:var(--txd); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.5px; cursor:pointer; user-select:none; }
+  .spd-wrap label:hover { color:var(--acg); }
+  .spd-wrap input[type=range] { width:100px; accent-color:var(--acg); height:3px; cursor:pointer; }
+  .spd-wrap .spd-val { font-size:10px; color:var(--acg); font-family:'JetBrains Mono',monospace; min-width:40px; text-align:right; }
+  .spd-wrap.slow .spd-val { color:#ff9800; }
+  .spd-wrap.fast .spd-val { color:var(--ac2); }
+
+  .tool-btn { padding:3px 9px; font-size:10px; }
+  .tool-btn.on { background:var(--ac2); color:#fff; border-color:transparent; box-shadow:0 0 10px rgba(255,46,122,.35); }
+  .preview-wrap { display:flex; align-items:center; gap:4px; }
+  .preview-wrap label { font-size:9px; color:var(--txd); font-family:'JetBrains Mono',monospace; }
+  .preview-wrap input[type=range] { width:90px; accent-color:var(--ac2); height:3px; }
+
+  .stroke-count { font-size:9px; color:var(--txdd); font-family:'JetBrains Mono',monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>StrokeFlow <span style="font-size:8px;color:var(--acg);letter-spacing:1px;font-weight:400;">WebGL</span></h1>
+  <div class="ha">
+    <div class="fz"><label>WAV:</label><button class="fb" onclick="$('wavIn').click()">Load</button><input type=file id=wavIn accept=".wav,.mp3,.ogg,.webm"><span class="fn" id=wavNm>&mdash;</span></div>
+    <div class="sep"></div>
+    <button class="bt-btn" onclick="startBeatTap()">&#9835; Beat Tap</button>
+    <div class="sep"></div>
+    <div class="fps-wrap">
+      <label>FPS:</label>
+      <select id="playbackFps" onchange="onPlaybackFpsChange()">
+        <option value="30">30</option>
+        <option value="45">45</option>
+        <option value="60" selected>60</option>
+        <option value="90">90</option>
+        <option value="120">120</option>
+        <option value="144">144</option>
+        <option value="165">165</option>
+        <option value="180">180</option>
+        <option value="240">240</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <div class="spd-wrap" id="spdWrap">
+      <label id="spdLbl" title="Click to reset to 100%">Speed:</label>
+      <input type="range" id="spdSlider" min="20" max="200" value="100" step="5" title="Playback speed.">
+      <span class="spd-val" id="spdVal">100%</span>
+    </div>
+    <div class="sep"></div>
+    <div class="mirror-wrap">
+      <label>&#9781; Mirror:</label>
+      <select id="mirrorSelect" onchange="onMirrorChange()">
+        <option value="none">Off</option>
+        <option value="overlap">Overlap</option>
+        <option value="split">Split</option>
+        <option value="quad">Quad</option>
+      </select>
+    </div>
+    <div class="sep"></div>
+    <button class="fs-btn" onclick="toggleMinimize()" id="fsBtn">&#9974; Minimize</button>
+    <div class="sep"></div>
+    <button class="refresh-btn" onclick="doRefresh()" title="Resync everything, clear lag">&#8635; Refresh</button>
+    <div class="sep"></div>
+    <button onclick="saveProj()">Save</button>
+    <button onclick="$('loadIn').click()">Load JSON</button><input type=file id=loadIn accept=".json" style="display:none">
+  </div>
+</header>
+
+<div class="mc">
+  <div class="cp">
+    <div class="tb">
+      <button onclick="clearStrokes()" class="bd">Clear Frame</button>
+      <button onclick="undoStroke()">Undo Stroke</button>
+      <button onclick="copyPrevStrokes()">Copy Prev</button>
+      <div class="sep"></div>
+      <button id="eraserBtn" class="tool-btn" onclick="toggleEraser()">Eraser</button>
+      <div class="sep"></div>
+      <label style="font-size:9px;color:var(--txd)"><input type=checkbox id=showGhosts checked style="accent-color:var(--ac)" onchange="markDirty();drawEditor()"> Past Ghosts</label>
+      <label style="font-size:9px;color:var(--txd)"><input type=checkbox id=showGrid style="accent-color:var(--ac)" onchange="drawEditor()"> Grid</label>
+      <div class="sep"></div>
+      <div class="preview-wrap" title="Scrub reveal of current frame's strokes (editor only)">
+        <label>Preview:</label>
+        <input type="range" id="previewScrub" min="0" max="100" value="100" step="1" oninput="onPreviewScrub()">
+        <span id="previewVal" style="font-size:9px;color:var(--ac2);font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right">100%</span>
+      </div>
+      <span class="ni" id=info>Ready</span>
+    </div>
+    <div class="cw" id=cwContainer>
+      <canvas id=cv></canvas>
+      <div class="mirror-divider" id="mirrorDivider"></div>
+      <div class="gpu-badge" id="gpuBadge">GPU</div>
+      <div class="fs-overlay" id="fsOverlay">
+        <button onclick="toggleMinimize()">&#9974; Restore</button>
+        <button onclick="playing ? doStop() : doPlay()" id="fsPlayBtn">&#9654; Play</button>
+        <span class="tDisp" id="fsTDisp">0:00.000</span>
+        <span class="drift-display" id="driftDisp"></span>
+      </div>
+    </div>
+  </div>
+  <div class="rp">
+    <h3>Frame Settings <span id="strokeCountDisp" class="stroke-count" style="float:right;font-weight:normal">0 strokes</span></h3>
+    <div class="pc" id=partC></div>
+  </div>
+</div>
+
+<div class="tp">
+  <div class="tt">
+    <button onclick="gotoBeginning()" title="Go to first frame (Home)">&#9198; Begin</button>
+    <button onclick="doPlay()" id=playBtn>&#9654; Play</button>
+    <button onclick="doStop()">&#9632; Stop</button>
+    <button onclick="goPrev()">&#9664; Prev</button>
+    <button onclick="goNext()">Next &#9654;</button>
+    <div class="sep"></div>
+    <button class="bg" onclick="insertAfter()">+ Add Frame</button>
+    <div class="sep"></div>
+    <button onclick="moveFrameUp()">&#8592; Move</button>
+    <button onclick="moveFrameDown()">Move &#8594;</button>
+    <div class="sep"></div>
+    <button onclick="copyFrame()">Copy</button>
+    <button onclick="pasteFrame()">Paste</button>
+    <button class="bd" onclick="deleteFrame()">Delete</button>
+    <div class="sep"></div>
+    <label class="edit-box-label"><input type=checkbox id=editBoxCb> Edit Boxes</label>
+    <span class="tDisp" id=tDisp>0:00.000</span>
+    <span class="sync-indicator" id=syncInd></span>
+  </div>
+  <div class="group-bar">
+    <label>GROUP:</label>
+    <select id=grpSelect onchange="onGroupSelect()">
+      <option value="">— None —</option>
+    </select>
+    <input type=text id=grpName placeholder="New group name...">
+    <button onclick="createGroup()">+ New Group</button>
+    <button onclick="assignGroup()" title="Add selected group to current frame (A)">+ Assign</button>
+    <button onclick="unassignGroup()" title="Remove selected group from current frame">− Remove</button>
+    <div class="sep"></div>
+    <button class="grp-play-btn" onclick="groupPlay()" title="Play selected group (G)">&#9654; Group Play</button>
+    <button onclick="renameGroup()">Rename</button>
+    <button class="bd" onclick="deleteGroup()">Del Group</button>
+  </div>
+  <div class="frame-strip-wrap" id=stripWrap>
+    <div class="frame-strip" id=frameStrip></div>
+  </div>
+</div>
+
+<!-- Beat Tap Modal -->
+<div class="mo" id=btMod>
+  <div class="md" style="max-width:440px;">
+    <h2>&#9835; Beat Tap Mode</h2>
+    <p>Press <strong style="color:var(--acg)">B</strong> in rhythm with your audio to create frame boundaries.</p>
+    <div class="bt-group-row" id="btGroupRow">
+      <label>Target:</label>
+      <select id="btTargetSelect">
+        <option value="">All frames (replace everything)</option>
+      </select>
+    </div>
+    <p id="btGroupHint" style="font-size:10px;color:var(--txdd);display:none;">Group mode: replaces only frames in the selected group. Audio plays from group start to group end.</p>
+    <p id="btAllHint" style="font-size:10px;color:var(--txdd);">This will replace all existing frames.</p>
+    <div id=btCountdownArea style="display:none;">
+      <div class="bt-countdown" id=btCountdownNum>3</div>
+      <div class="bt-hint">Get ready...</div>
+    </div>
+    <div id=btActiveArea style="display:none;">
+      <div class="bt-elapsed" id=btElapsed>0:00.000</div>
+      <div class="bt-beats" id=btBeatCount>0</div>
+      <div class="bt-hint">beats tapped &mdash; press <strong style="color:var(--acg)">B</strong> to mark a beat</div>
+      <div class="bt-status" id=btStatus>Listening...</div>
+    </div>
+    <div class="ma" id=btStartBtns>
+      <button class="bp" onclick="beginBeatTapCountdown()">Start</button>
+      <button onclick="closeBeatTap()">Cancel</button>
+    </div>
+    <div class="ma" id=btStopBtns style="display:none;">
+      <button class="bd" onclick="finishBeatTap()">&#9632; Finish &amp; Apply</button>
+      <button onclick="cancelBeatTap()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================================================================
+//  STROKEFLOW — WebGL renderer
+//
+//  Architecture:
+//    - WebGL2 (with WebGL1 fallback for derivative usage; we don't need it)
+//    - Each stroke is rendered as a triangle strip along its path. We
+//      build, for every revealed segment of every visible stroke, two
+//      vertices offset perpendicular to the path by ±halfWidth. All
+//      per-vertex data (position, width, color, alpha) is packed into
+//      one big interleaved Float32Array and uploaded once per render.
+//    - One big draw call per "stroke layer": current frame strokes are
+//      drawn live every animation frame; past frames are drawn into a
+//      "history" framebuffer that ONLY rebuilds when frames change
+//      (not 60×/sec). This is the main perf win vs 2D-canvas.
+//    - Glow is one full-screen separable blur (two passes) over the
+//      whole composed scene, NOT shadowBlur per stroke. Massively
+//      faster, looks identical (or better) at full canvas res.
+//    - Mirror modes (overlap / split / quad) are GPU coordinate
+//      transforms applied at compose time, NOT extra geometry.
+//
+//  All app logic — frames, strokes, timeline, audio sync, beat tap,
+//  groups, save/load — is preserved 1:1 from the original.
+// ========================================================================
+
+const $ = id => document.getElementById(id);
+const cv = $('cv');
+function cloneP(o) { return JSON.parse(JSON.stringify(o)); }
+function isEditBoxChecked() { return $('editBoxCb').checked; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ========================================================================
+//  FRAME SETTINGS DEFINITION (1:1 with original)
+// ========================================================================
+const SETTINGS_DEFS = [
+  { group:'Core',   key:'thickness',    label:'Thick',   min:0.5, max:40,  step:0.5, def:4,     unit:'px' },
+  { group:'Core',   key:'color',        label:'Color',   type:'color', def:'#00d4ff' },
+  { group:'Core',   key:'glow',         label:'Glow',    min:0,   max:80,  step:1,   def:22,    unit:'px' },
+  { group:'Core',   key:'glowColor',    label:'GlowCol', type:'color', def:'#00d4ff' },
+  { group:'Core',   key:'glowMatch',    label:'Match',   type:'check', def:true, tip:'Glow color follows stroke color' },
+  { group:'Core',   key:'bgColor',      label:'BgCol',   type:'color', def:'#06060c' },
+
+  { group:'Shape',  key:'cap',          label:'Cap',     type:'select', options:['round','butt','square'], def:'round' },
+  { group:'Shape',  key:'taperStart',   label:'TaperS',  min:0,   max:200, step:5,   def:100,   unit:'%' },
+  { group:'Shape',  key:'taperEnd',     label:'TaperE',  min:0,   max:200, step:5,   def:100,   unit:'%' },
+  { group:'Shape',  key:'smoothing',    label:'Smooth',  min:0,   max:100, step:1,   def:70,    unit:'%' },
+  { group:'Shape',  key:'dashLen',      label:'DashLen', min:0,   max:60,  step:1,   def:0,     unit:'px', tip:'0 = solid line' },
+  { group:'Shape',  key:'dashGap',      label:'DashGap', min:0,   max:60,  step:1,   def:10,    unit:'px' },
+
+  { group:'Motion', key:'speedCurve',   label:'Speed',   min:0,   max:100, step:1,   def:0,     unit:'%', tip:'0=Linear  100=Smoothstep (slow-fast-slow)' },
+  { group:'Motion', key:'reverse',      label:'Reverse', type:'check', def:false, tip:'Replay stroke in reverse direction' },
+  { group:'Motion', key:'trailLen',     label:'Trail',   min:0,   max:100, step:1,   def:100,   unit:'%', tip:'How much of the stroke behind the head stays visible within its own frame' },
+  { group:'Motion', key:'fadeIn',       label:'FadeIn',  min:0,   max:100, step:1,   def:0,     unit:'%' },
+  { group:'Motion', key:'fadeOut',      label:'FadeOut', min:0,   max:100, step:1,   def:0,     unit:'%' },
+
+  { group:'Decay',  key:'pastStrength', label:'PastStr', min:0,   max:100, step:1,   def:28,    unit:'%' },
+  { group:'Decay',  key:'decay',        label:'Decay',   min:0,   max:100, step:1,   def:60,    unit:'%' },
+  { group:'Decay',  key:'pastThickMul', label:'PastThk', min:10,  max:100, step:1,   def:70,    unit:'%' },
+
+  { group:'Flair',  key:'hueShift',     label:'HueShft', min:-180,max:180, step:1,   def:0,     unit:'\u00B0' },
+  { group:'Flair',  key:'pulseAmp',     label:'PulseAmp',min:0,   max:100, step:1,   def:0,     unit:'%' },
+  { group:'Flair',  key:'pulseFreq',    label:'PulseHz', min:0,   max:30,  step:0.5, def:4,     unit:'' },
+  { group:'Flair',  key:'composite',    label:'Blend',   type:'select', options:['source-over','lighter','screen','overlay','color-dodge'], def:'lighter' },
+  { group:'Flair',  key:'particles',    label:'Spark',   min:0,   max:100, step:1,   def:40,    unit:'%' },
+  { group:'Flair',  key:'jitter',       label:'Jitter',  min:0,   max:20,  step:0.5, def:0,     unit:'px' },
+  { group:'Flair',  key:'shake',        label:'Shake',   min:0,   max:40,  step:1,   def:0,     unit:'px' },
+];
+
+const SETTINGS_GROUPS = ['Core','Shape','Motion','Decay','Flair'];
+
+function defaultSettings() {
+  const s = {};
+  for (const d of SETTINGS_DEFS) s[d.key] = d.def;
+  return s;
+}
+
+// ========================================================================
+//  DATA MODEL
+// ========================================================================
+let frames = [];
+let cfi = 0;
+let clipboard = null;
+let audioBlob = null, audioEl = null;
+let playing = false, playT0 = 0, playOff = 0, animId = null;
+let frameDrifts = {};
+let previewScrub = 1.0;
+
+let groups = [];
+let nextGroupId = 1;
+const GROUP_COLORS = [
+  '#ff2e7a', '#00d4ff', '#00ff88', '#ffcc00',
+  '#ff6600', '#aa44ff', '#ff4444', '#44ffcc',
+  '#ff80ab', '#82b1ff', '#b9f6ca', '#ffe57f',
+];
+
+function getGroupColor(gid) {
+  const idx = groups.findIndex(g => g.id === gid);
+  if (idx < 0) return '#ff2e7a';
+  return GROUP_COLORS[idx % GROUP_COLORS.length];
+}
+
+function makeFrame(title, duration) {
+  return {
+    title: title || 'Frame',
+    duration: duration ?? 1.0,
+    strokes: [],
+    settings: defaultSettings(),
+    groups: [],
+  };
+}
+
+// ========================================================================
+//  WEBGL RENDERER
+// ========================================================================
+const GL = {
+  gl: null,
+  width: 0, height: 0,           // canvas pixel size (drawing buffer)
+  cssW: 0, cssH: 0,              // CSS-px size we expose to app code
+  dpr: 1,
+
+  // Programs
+  strokeProg: null,
+  composeProg: null,
+  finalProg: null,
+  blurProg: null,
+  bgProg: null,
+
+  // Geometry: a single big Float32Array we re-fill per draw call.
+  // Each vertex: x, y, dirX, dirY, halfWidth, r, g, b, a
+  // Stride = 9 floats = 36 bytes
+  vbo: null,
+  vboSize: 0,
+  vertexBuf: null,                // CPU-side Float32Array, grown as needed
+
+  // Framebuffers
+  historyFB: null,                // composited "past frames" texture
+  historyTex: null,
+  liveFB: null,                   // current frame strokes
+  liveTex: null,
+  blurAFB: null, blurATex: null,  // ping-pong for blur
+  blurBFB: null, blurBTex: null,
+  composedFB: null, composedTex: null,
+
+  // Quad VBO for full-screen passes
+  quadVBO: null,
+
+  // Dirty flags
+  historyDirty: true,             // re-render past-frame texture
+  needsLayoutResize: false,
+};
+
+function glCheckErr(label) {
+  const e = GL.gl.getError();
+  if (e !== GL.gl.NO_ERROR) console.warn('[gl]', label, '0x' + e.toString(16));
+}
+
+function compileShader(gl, type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+    console.error('Shader compile error:\n' + gl.getShaderInfoLog(sh) + '\n--- source ---\n' + src);
+    throw new Error('Shader compile failed');
+  }
+  return sh;
+}
+function linkProgram(gl, vsSrc, fsSrc, attribs) {
+  const vs = compileShader(gl, gl.VERTEX_SHADER, vsSrc);
+  const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+  const p = gl.createProgram();
+  gl.attachShader(p, vs);
+  gl.attachShader(p, fs);
+  if (attribs) for (let i = 0; i < attribs.length; i++) gl.bindAttribLocation(p, i, attribs[i]);
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error('Program link error: ' + gl.getProgramInfoLog(p));
+    throw new Error('Program link failed');
+  }
+  // Cache uniform/attrib locations
+  const uniforms = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const info = gl.getActiveUniform(p, i);
+    uniforms[info.name] = gl.getUniformLocation(p, info.name);
+  }
+  return { program: p, uniforms };
+}
+
+function makeTexture(gl, w, h) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return tex;
+}
+function makeFB(gl, tex) {
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  return fb;
+}
+
+// ---------- Shaders ----------
+const VS_STROKE = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+layout(location=1) in vec2 a_dir;       // perpendicular direction (already -1..1)
+layout(location=2) in float a_halfW;    // half-width in pixels
+layout(location=3) in vec4 a_color;     // premultiplied rgba
+uniform vec2 u_resolution;              // canvas pixel size
+out vec4 v_color;
+void main() {
+  vec2 p = a_pos + a_dir * a_halfW;
+  vec2 clip = (p / u_resolution) * 2.0 - 1.0;
+  clip.y = -clip.y;
+  gl_Position = vec4(clip, 0.0, 1.0);
+  v_color = a_color;
+}`;
+
+const FS_STROKE = `#version 300 es
+precision highp float;
+in vec4 v_color;
+out vec4 outColor;
+void main() {
+  outColor = v_color;
+}`;
+
+const VS_QUAD = `#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+out vec2 v_uv;
+void main() {
+  v_uv = a_pos * 0.5 + 0.5;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+// Compose: combines history + live, applies optional mirror, paints over bg
+const FS_COMPOSE = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+uniform sampler2D u_history;
+uniform sampler2D u_live;
+uniform vec3 u_bg;
+uniform int u_mirror;            // 0 none, 1 overlap, 2 split, 3 quad
+out vec4 outColor;
+
+vec4 sampleScene(vec2 uv) {
+  vec4 h = texture(u_history, uv);
+  vec4 l = texture(u_live, uv);
+  return clamp(h + l, 0.0, 1.0);
+}
+
+vec4 sampleMirrored(vec2 uv) {
+  if (u_mirror == 1) {
+    vec4 a = sampleScene(uv);
+    vec4 b = sampleScene(vec2(1.0 - uv.x, uv.y));
+    return clamp(a + b, 0.0, 1.0);
+  } else if (u_mirror == 2) {
+    vec2 q = uv;
+    if (uv.x < 0.5) q = vec2(uv.x * 2.0, uv.y);
+    else            q = vec2((1.0 - uv.x) * 2.0, uv.y);
+    return sampleScene(q);
+  } else if (u_mirror == 3) {
+    vec4 a = sampleScene(uv);
+    vec4 b = sampleScene(vec2(1.0 - uv.x, uv.y));
+    vec4 c = sampleScene(vec2(uv.x, 1.0 - uv.y));
+    vec4 d = sampleScene(vec2(1.0 - uv.x, 1.0 - uv.y));
+    return clamp(a + b + c + d, 0.0, 1.0);
+  }
+  return sampleScene(uv);
+}
+
+void main() {
+  vec4 scene = sampleMirrored(v_uv);
+  vec3 color = u_bg.rgb * (1.0 - scene.a) + scene.rgb;
+  outColor = vec4(color, 1.0);
+}`;
+
+// Final pass: takes already-composed (mirrored, bg-blended) scene and adds glow on top
+const FS_FINAL = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+uniform sampler2D u_scene;
+uniform sampler2D u_glow;
+uniform float u_glowIntensity;
+uniform float u_useGlow;
+out vec4 outColor;
+void main() {
+  vec3 c = texture(u_scene, v_uv).rgb;
+  if (u_useGlow > 0.5) {
+    vec3 g = texture(u_glow, v_uv).rgb * u_glowIntensity;
+    c = clamp(c + g, 0.0, 1.0);
+  }
+  outColor = vec4(c, 1.0);
+}`;
+
+// Separable blur (used for glow). 9-tap gaussian with adjustable radius.
+const FS_BLUR = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+uniform sampler2D u_input;
+uniform vec2 u_step;             // pixel step (1/w, 0) or (0, 1/h) scaled by radius
+out vec4 outColor;
+void main() {
+  vec4 sum = vec4(0.0);
+  // 9 taps, gaussian-ish weights normalized.
+  // weights: 0.05 0.09 0.12 0.15 0.18 0.15 0.12 0.09 0.05 -> sum 1.0
+  float w[9];
+  w[0]=0.05; w[1]=0.09; w[2]=0.12; w[3]=0.15; w[4]=0.18;
+  w[5]=0.15; w[6]=0.12; w[7]=0.09; w[8]=0.05;
+  for (int i = 0; i < 9; i++) {
+    float off = float(i - 4);
+    sum += texture(u_input, v_uv + u_step * off) * w[i];
+  }
+  outColor = sum;
+}`;
+
+// Background fill + grid
+const FS_BG = `#version 300 es
+precision highp float;
+in vec2 v_uv;
+uniform vec3 u_bg;
+uniform float u_grid;            // 0 or 1
+uniform vec2 u_resolution;
+out vec4 outColor;
+void main() {
+  vec3 col = u_bg;
+  if (u_grid > 0.5) {
+    vec2 p = v_uv * u_resolution;
+    float g = max(
+      step(fract(p.x / 40.0), 0.025),
+      step(fract(p.y / 40.0), 0.025)
+    );
+    col = mix(col, col + vec3(0.04, 0.04, 0.06), g);
+  }
+  outColor = vec4(col, 1.0);
+}`;
+
+function initGL() {
+  const gl = cv.getContext('webgl2', { premultipliedAlpha: false, antialias: true, alpha: false, preserveDrawingBuffer: false });
+  if (!gl) {
+    alert('WebGL2 is required. Please use a modern browser.');
+    throw new Error('No WebGL2');
+  }
+  GL.gl = gl;
+
+  const stroke = linkProgram(gl, VS_STROKE, FS_STROKE, ['a_pos','a_dir','a_halfW','a_color']);
+  const compose = linkProgram(gl, VS_QUAD, FS_COMPOSE, ['a_pos']);
+  const finalP = linkProgram(gl, VS_QUAD, FS_FINAL, ['a_pos']);
+  const blur = linkProgram(gl, VS_QUAD, FS_BLUR, ['a_pos']);
+  const bg = linkProgram(gl, VS_QUAD, FS_BG, ['a_pos']);
+  GL.strokeProg = stroke;
+  GL.composeProg = compose;
+  GL.finalProg = finalP;
+  GL.blurProg = blur;
+  GL.bgProg = bg;
+
+  // Quad VBO
+  GL.quadVBO = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, GL.quadVBO);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+  // Stroke VBO
+  GL.vbo = gl.createBuffer();
+  GL.vboSize = 0;
+  GL.vertexBuf = new Float32Array(64 * 1024); // initial 64K floats
+
+  // Show GPU badge briefly so user can confirm WebGL is active
+  const badge = $('gpuBadge');
+  if (badge) {
+    badge.classList.add('show');
+    setTimeout(() => badge.classList.remove('show'), 2500);
+  }
+}
+
+function ensureFramebuffers(w, h) {
+  const gl = GL.gl;
+  if (GL.historyTex) {
+    gl.deleteTexture(GL.historyTex); gl.deleteTexture(GL.liveTex);
+    gl.deleteTexture(GL.blurATex);   gl.deleteTexture(GL.blurBTex);
+    gl.deleteTexture(GL.composedTex);
+    gl.deleteFramebuffer(GL.historyFB); gl.deleteFramebuffer(GL.liveFB);
+    gl.deleteFramebuffer(GL.blurAFB);   gl.deleteFramebuffer(GL.blurBFB);
+    gl.deleteFramebuffer(GL.composedFB);
+  }
+  GL.historyTex = makeTexture(gl, w, h);  GL.historyFB = makeFB(gl, GL.historyTex);
+  GL.liveTex    = makeTexture(gl, w, h);  GL.liveFB    = makeFB(gl, GL.liveTex);
+  // Blur ping-pong is half-res for perf
+  const bw = Math.max(8, w >> 1), bh = Math.max(8, h >> 1);
+  GL.blurATex   = makeTexture(gl, bw, bh); GL.blurAFB   = makeFB(gl, GL.blurATex);
+  GL.blurBTex   = makeTexture(gl, bw, bh); GL.blurBFB   = makeFB(gl, GL.blurBTex);
+  GL.composedTex = makeTexture(gl, w, h);  GL.composedFB = makeFB(gl, GL.composedTex);
+  GL._blurW = bw; GL._blurH = bh;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  GL.historyDirty = true;
+}
+
+function resizeC() {
+  const r = $('cwContainer').getBoundingClientRect();
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  // Cap DPR for perf on hi-dpi displays — 2 is plenty. (User can override in console: GL._dprCap)
+  const dprCap = (GL._dprCap || 2);
+  const useDpr = Math.min(dpr, dprCap);
+  const w = Math.max(1, Math.floor(r.width  * useDpr));
+  const h = Math.max(1, Math.floor(r.height * useDpr));
+  cv.width = w; cv.height = h;
+  cv.style.width = r.width + 'px';
+  cv.style.height = r.height + 'px';
+  GL.width = w; GL.height = h;
+  GL.cssW = r.width; GL.cssH = r.height;
+  GL.dpr = useDpr;
+  if (GL.gl) {
+    ensureFramebuffers(w, h);
+    drawEditor();
+  }
+}
+
+function cssCanvasSize() { return { w: GL.cssW, h: GL.cssH }; }
+
+// ========================================================================
+//  PLAYBACK SPEED
+// ========================================================================
+let currentSpeed = 1.0;
+function displayDur(realDur)   { return realDur / currentSpeed; }
+function storeDur(displayed)   { return displayed * currentSpeed; }
+function displayTime(realSec)  { return realSec / currentSpeed; }
+
+function onSpeedChange() {
+  const raw = +$('spdSlider').value;
+  const newSpeed = Math.max(0.01, raw / 100);
+  const oldSpeed = currentSpeed;
+  currentSpeed = newSpeed;
+
+  if (audioEl) {
+    try { audioEl.preservesPitch = true; audioEl.playbackRate = currentSpeed; } catch (_) {}
+  }
+  const audioActive = audioEl && !audioEl.paused && audioEl.duration > 0;
+  if (playing && !audioActive) {
+    const realNow = (playOff + (performance.now() - playT0) * oldSpeed) / 1000;
+    playT0 = performance.now();
+    playOff = realNow * 1000;
+  }
+
+  const wrap = $('spdWrap');
+  wrap.classList.toggle('slow', currentSpeed < 1);
+  wrap.classList.toggle('fast', currentSpeed > 1);
+  $('spdVal').textContent = Math.round(currentSpeed * 100) + '%';
+
+  renderTimeline(true);
+  updInfo();
+}
+function resetSpeed() { $('spdSlider').value = 100; onSpeedChange(); }
+
+// ========================================================================
+//  FPS CONTROL
+// ========================================================================
+let playbackFps = 60;
+let playbackFrameInterval = 1000 / 60;
+function onPlaybackFpsChange() {
+  playbackFps = +$('playbackFps').value;
+  playbackFrameInterval = 1000 / playbackFps;
+}
+
+// ========================================================================
+//  MINIMIZE
+// ========================================================================
+let minimized = false;
+function toggleMinimize() {
+  minimized = !minimized;
+  document.body.classList.toggle('minimized', minimized);
+  $('fsBtn').innerHTML = minimized ? '&#9974; Restore' : '&#9974; Minimize';
+  requestAnimationFrame(() => { resizeC(); });
+}
+
+// ========================================================================
+//  MIRROR
+// ========================================================================
+function getMirrorMode() { return $('mirrorSelect').value; }
+function getMirrorModeInt() {
+  switch (getMirrorMode()) {
+    case 'overlap': return 1;
+    case 'split':   return 2;
+    case 'quad':    return 3;
+    default:        return 0;
+  }
+}
+function onMirrorChange() {
+  $('mirrorDivider').classList.toggle('visible', getMirrorMode() !== 'none');
+  drawEditor();
+}
+
+// ========================================================================
+//  CACHED CUMULATIVE FRAME START TIMES
+// ========================================================================
+let _frameStartCache = [];
+let _totalDurCache = 0;
+function rebuildTimeCache() {
+  _frameStartCache = new Array(frames.length);
+  let t = 0;
+  for (let i = 0; i < frames.length; i++) {
+    _frameStartCache[i] = t;
+    t += frames[i].duration;
+  }
+  _totalDurCache = t;
+}
+function frameStartTime(i) { return _frameStartCache[i] ?? 0; }
+function totalDuration()   { return _totalDurCache; }
+function invalidateTimeCache() { rebuildTimeCache(); markDirty(); }
+
+// "Mark history dirty" — call whenever past-frame data could affect render
+function markDirty() { GL.historyDirty = true; }
+
+// ========================================================================
+//  COLOR UTILS (only used at edit time, not in hot render path)
+// ========================================================================
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : {r:255,g:255,b:255};
+}
+function rgbToHex(r,g,b) {
+  return '#' + [r,g,b].map(x => Math.max(0,Math.min(255,Math.round(x))).toString(16).padStart(2,'0')).join('');
+}
+function rgbToHsl(r,g,b) {
+  r/=255; g/=255; b/=255;
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+  let h=0, s=0, l=(mx+mn)/2;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > 0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    if (mx === r) h = (g-b)/d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  return { h, s, l };
+}
+function hslToRgb(h,s,l) {
+  h = ((h % 360) + 360) % 360;
+  if (s === 0) { const v = Math.round(l*255); return {r:v,g:v,b:v}; }
+  const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+  const p = 2*l - q;
+  const hue2rgb = (p,q,t) => {
+    if (t<0) t+=1; if (t>1) t-=1;
+    if (t<1/6) return p+(q-p)*6*t;
+    if (t<1/2) return q;
+    if (t<2/3) return p+(q-p)*(2/3-t)*6;
+    return p;
+  };
+  const H = h/360;
+  return {
+    r: Math.round(hue2rgb(p,q,H+1/3)*255),
+    g: Math.round(hue2rgb(p,q,H)*255),
+    b: Math.round(hue2rgb(p,q,H-1/3)*255),
+  };
+}
+function shiftHueRGB(r, g, b, deg) {
+  if (deg === 0) return { r, g, b };
+  const hsl = rgbToHsl(r*255, g*255, b*255);
+  const o = hslToRgb(hsl.h + deg, hsl.s, hsl.l);
+  return { r: o.r/255, g: o.g/255, b: o.b/255 };
+}
+
+// Hex -> [r,g,b] floats 0..1, cached so we don't hit the regex in hot paths
+const _hexCache = new Map();
+function hexToRgbF(hex) {
+  let v = _hexCache.get(hex);
+  if (v) return v;
+  const c = hexToRgb(hex);
+  v = [c.r/255, c.g/255, c.b/255];
+  _hexCache.set(hex, v);
+  return v;
+}
+
+// ========================================================================
+//  SPEED CURVE
+// ========================================================================
+function applySpeedCurve(t, strength01) {
+  const linear = t;
+  const smooth = t*t*(3 - 2*t);
+  return linear + (smooth - linear) * strength01;
+}
+
+// ========================================================================
+//  PROGRESS / ENVELOPE
+// ========================================================================
+function strokeProgressAt(stroke, localTimeSec, frameDur) {
+  const s = stroke.settings;
+  const raw = frameDur > 0 ? clamp(localTimeSec / frameDur, 0, 1) : 1;
+  return applySpeedCurve(raw, (s.speedCurve ?? 0) / 100);
+}
+function strokeEnvelopeAlpha(stroke, localTimeSec, frameDur) {
+  const s = stroke.settings;
+  const t = frameDur > 0 ? clamp(localTimeSec / frameDur, 0, 1) : 1;
+  const fi = (s.fadeIn ?? 0) / 100;
+  const fo = (s.fadeOut ?? 0) / 100;
+  let a = 1;
+  if (fi > 0.001 && t < fi) a *= (t / fi);
+  if (fo > 0.001 && t > 1 - fo) a *= ((1 - t) / fo);
+  return a;
+}
+function pastFactor(strokeFrameIdx, viewFrameIdx) {
+  if (viewFrameIdx <= strokeFrameIdx) return null;
+  const strokeFrame = frames[strokeFrameIdx];
+  if (!strokeFrame) return null;
+  const s = strokeFrame.settings;
+  const age = viewFrameIdx - strokeFrameIdx;
+  const base = (s.pastStrength ?? 25) / 100;
+  const decayK = Math.pow(1 - (s.decay ?? 60) / 100 * 0.85, Math.max(0, age - 1));
+  const alpha = base * decayK;
+  const thick = (s.pastThickMul ?? 70) / 100 * Math.pow(0.9, Math.max(0, age - 1));
+  return { alpha, thick };
+}
+
+
+// ========================================================================
+//  STROKE GEOMETRY BUILDER
+//  This is the heart of the WebGL renderer. For each visible stroke
+//  segment we emit two triangles (quad) sized by the segment width and
+//  oriented perpendicular to the path direction. This is essentially the
+//  same trick used by deck.gl, mapbox-gl, etc — fast as hell because
+//  it's all on the GPU as a single draw call.
+//
+//  Vertex layout (interleaved):
+//    f32 x, y          (pixel position of segment endpoint)
+//    f32 dirX, dirY    (perpendicular unit vector)
+//    f32 halfW         (offset in pixels — vertex shader does pos += dir*halfW)
+//    f32 r, g, b, a    (per-vertex color)
+//  Stride = 9 floats.
+//
+//  We use TRIANGLES (not strip) so we can handle gaps between strokes.
+// ========================================================================
+
+const STRIDE_F = 9;
+let _vertCount = 0;          // current vertex count packed in vertexBuf
+let _vbStart = 0;
+
+function vbReset() { _vertCount = 0; }
+function vbReserve(extraVerts) {
+  const need = (_vertCount + extraVerts) * STRIDE_F;
+  if (need > GL.vertexBuf.length) {
+    let cap = GL.vertexBuf.length;
+    while (cap < need) cap *= 2;
+    const nb = new Float32Array(cap);
+    nb.set(GL.vertexBuf);
+    GL.vertexBuf = nb;
+  }
+}
+function vbPushVert(x, y, dx, dy, hw, r, g, b, a) {
+  const o = _vertCount * STRIDE_F;
+  const buf = GL.vertexBuf;
+  buf[o] = x; buf[o+1] = y;
+  buf[o+2] = dx; buf[o+3] = dy;
+  buf[o+4] = hw;
+  buf[o+5] = r; buf[o+6] = g; buf[o+7] = b; buf[o+8] = a;
+  _vertCount++;
+}
+
+// Tessellate one stroke at the given progress + alpha multiplier into the vertex buffer.
+// xformFn: optional (x,y) => [x',y'] coordinate transform (currently used for split-mirror only).
+// jitterAmt: 0 disables jitter
+function tessellateStroke(stroke, progress, opts) {
+  const s = stroke.settings;
+  const pts0 = stroke.points;
+  if (!pts0 || pts0.length === 0) return;
+  if (progress <= 0) return;
+
+  const alphaMult = opts.alphaMult ?? 1;
+  const widthMult = opts.widthMult ?? 1;
+  const xform     = opts.xform || null;
+
+  const baseColor = hexToRgbF(s.color);
+  const hue = s.hueShift ?? 0;
+  const trailFrac = Math.max(0.01, (s.trailLen ?? 100) / 100);
+
+  // Single-point tap handling: emit a small octagon "dot"
+  if (pts0.length === 1) {
+    let x = pts0[0].x, y = pts0[0].y;
+    if (xform) { const r = xform(x,y); x=r[0]; y=r[1]; }
+    const r = (s.thickness ?? 4) * widthMult * 0.7;
+    const a = alphaMult;
+    const N = 12;
+    vbReserve(N * 3);
+    for (let i = 0; i < N; i++) {
+      const a0 = (i / N) * Math.PI * 2;
+      const a1 = ((i+1) / N) * Math.PI * 2;
+      const x0 = x + Math.cos(a0) * r, y0 = y + Math.sin(a0) * r;
+      const x1 = x + Math.cos(a1) * r, y1 = y + Math.sin(a1) * r;
+      vbPushVert(x, y, 0, 0, 0, baseColor[0], baseColor[1], baseColor[2], a);
+      vbPushVert(x0, y0, 0, 0, 0, baseColor[0], baseColor[1], baseColor[2], a);
+      vbPushVert(x1, y1, 0, 0, 0, baseColor[0], baseColor[1], baseColor[2], a);
+    }
+    return;
+  }
+
+  // Reverse direction if requested
+  const N = pts0.length;
+  const idxRev = !!s.reverse;
+
+  // Compute reveal index/frac
+  const revealFloat = progress * (N - 1);
+  const revealIdx = Math.floor(revealFloat);
+  const revealFrac = revealFloat - revealIdx;
+
+  // Trail start
+  const trailStartFloat = Math.max(0, revealFloat - trailFrac * (N - 1));
+  const trailStartIdx = Math.floor(trailStartFloat);
+
+  // Pre-compute transformed point list (only the segments we'll draw, plus 1 extra for direction)
+  const lo = Math.max(0, trailStartIdx);
+  const hi = Math.min(N - 1, revealIdx + 1);
+  if (hi <= lo) return;
+
+  // We need points lo..hi inclusive
+  const ptsT = new Array(hi - lo + 1);
+  const jit = s.jitter || 0;
+  for (let i = lo; i <= hi; i++) {
+    const sIdx = idxRev ? (N - 1 - i) : i;
+    let x = pts0[sIdx].x, y = pts0[sIdx].y;
+    if (xform) { const r = xform(x,y); x=r[0]; y=r[1]; }
+    if (jit > 0) {
+      x += (Math.random() - 0.5) * jit;
+      y += (Math.random() - 0.5) * jit;
+    }
+    ptsT[i - lo] = [x, y];
+  }
+
+  // Clip first segment at trailStartFrac
+  const trailFracPart = trailStartFloat - trailStartIdx;
+  if (trailFracPart > 0.0001 && lo === trailStartIdx && ptsT.length >= 2) {
+    const a = ptsT[0], b = ptsT[1];
+    const ax = a[0] + (b[0] - a[0]) * trailFracPart;
+    const ay = a[1] + (b[1] - a[1]) * trailFracPart;
+    ptsT[0] = [ax, ay];
+  }
+  // Clip last segment at revealFrac
+  if (revealFrac < 1 && revealFrac > 0 && (revealIdx - lo + 1) < ptsT.length) {
+    const a = ptsT[revealIdx - lo], b = ptsT[revealIdx - lo + 1];
+    const bx = a[0] + (b[0] - a[0]) * revealFrac;
+    const by = a[1] + (b[1] - a[1]) * revealFrac;
+    ptsT[revealIdx - lo + 1] = [bx, by];
+    // Truncate after reveal endpoint
+    ptsT.length = revealIdx - lo + 2;
+  }
+
+  if (ptsT.length < 2) return;
+
+  // Build per-vertex normals (perpendicular to averaged tangent at each point)
+  const NV = ptsT.length;
+  const dirs = new Array(NV);
+  for (let i = 0; i < NV; i++) {
+    let tx, ty;
+    if (i === 0) { tx = ptsT[1][0] - ptsT[0][0]; ty = ptsT[1][1] - ptsT[0][1]; }
+    else if (i === NV - 1) { tx = ptsT[NV-1][0] - ptsT[NV-2][0]; ty = ptsT[NV-1][1] - ptsT[NV-2][1]; }
+    else {
+      const a = ptsT[i-1], b = ptsT[i+1];
+      tx = b[0] - a[0]; ty = b[1] - a[1];
+    }
+    const len = Math.hypot(tx, ty) || 1;
+    // Perpendicular = rotate 90°
+    dirs[i] = [-ty / len, tx / len];
+  }
+
+  // Per-vertex width and color
+  const baseThick = (s.thickness ?? 4) * widthMult;
+  const tStart = (s.taperStart ?? 100) / 100;
+  const tEnd   = (s.taperEnd ?? 100) / 100;
+  const pAmp   = (s.pulseAmp ?? 0) / 100;
+  const pFreq  = (s.pulseFreq ?? 0);
+  const dashLen = s.dashLen ?? 0;
+  const dashGap = s.dashGap ?? 0;
+
+  // Compute arc-length accumulator for dash and for taper-along-path
+  // (We use index-based taper rather than arc-length-based for simplicity & speed)
+  const segWidths = new Float32Array(NV);
+  const segAlphas = new Float32Array(NV);
+  // Where this vertex's "i" actually is in the stroke's full point space:
+  // for taper purposes the original index is (lo + i) for the leading point,
+  // but we want a normalized 0..1 along whole stroke.
+  for (let i = 0; i < NV; i++) {
+    const fullIdx = lo + i; // 0..N-1
+    const segT = (N > 1) ? fullIdx / (N - 1) : 0;
+    const taper = lerp(tStart, tEnd, segT);
+    let pulse = 1;
+    if (pAmp > 0 && pFreq > 0) pulse = 1 + pAmp * Math.sin(segT * pFreq * Math.PI * 2);
+    let w = Math.max(0.1, baseThick * taper * pulse);
+    segWidths[i] = w * 0.5;
+
+    // Trail alpha fade
+    let trailAlpha = 1;
+    if (trailFrac < 0.99) {
+      const distFromHead = (revealFloat - fullIdx) / Math.max(0.001, trailFrac * (N - 1));
+      trailAlpha = Math.max(0.05, 1 - distFromHead * 0.85);
+    }
+    segAlphas[i] = trailAlpha * alphaMult;
+  }
+
+  // For dash mode: compute arc-length along the (clipped) path. If a vertex
+  // lies inside a "gap" we skip emitting that segment. (Simple but works.)
+  let arc = null;
+  if (dashLen > 0) {
+    arc = new Float32Array(NV);
+    let acc = 0;
+    arc[0] = 0;
+    for (let i = 1; i < NV; i++) {
+      acc += Math.hypot(ptsT[i][0] - ptsT[i-1][0], ptsT[i][1] - ptsT[i-1][1]);
+      arc[i] = acc;
+    }
+  }
+
+  // Per-vertex color (with optional hueshift along path)
+  let cols;
+  if (hue !== 0) {
+    cols = new Array(NV);
+    for (let i = 0; i < NV; i++) {
+      const fullIdx = lo + i;
+      const segT = (N > 1) ? fullIdx / (N - 1) : 0;
+      const c = shiftHueRGB(baseColor[0], baseColor[1], baseColor[2], hue * segT);
+      cols[i] = [c.r, c.g, c.b];
+    }
+  }
+
+  // Emit triangles per segment (between i and i+1)
+  vbReserve((NV - 1) * 6);
+  for (let i = 0; i < NV - 1; i++) {
+    if (dashLen > 0) {
+      // Skip segment if midpoint is in a gap
+      const mid = (arc[i] + arc[i+1]) * 0.5;
+      const period = dashLen + Math.max(0, dashGap);
+      if ((mid % period) > dashLen) continue;
+    }
+    const a = ptsT[i],   b = ptsT[i+1];
+    const dA = dirs[i],  dB = dirs[i+1];
+    const wA = segWidths[i], wB = segWidths[i+1];
+    const aA = segAlphas[i], aB = segAlphas[i+1];
+    const cA = cols ? cols[i] : baseColor;
+    const cB = cols ? cols[i+1] : baseColor;
+
+    // Quad: A_top, B_top, A_bot, B_bot
+    // Triangles: (A_top, B_top, A_bot), (B_top, B_bot, A_bot)
+    // We use halfW with sign baked into dir to keep shader simple
+    vbPushVert(a[0], a[1], dA[0], dA[1], wA, cA[0], cA[1], cA[2], aA);
+    vbPushVert(b[0], b[1], dB[0], dB[1], wB, cB[0], cB[1], cB[2], aB);
+    vbPushVert(a[0], a[1], -dA[0], -dA[1], wA, cA[0], cA[1], cA[2], aA);
+
+    vbPushVert(b[0], b[1], dB[0], dB[1], wB, cB[0], cB[1], cB[2], aB);
+    vbPushVert(b[0], b[1], -dB[0], -dB[1], wB, cB[0], cB[1], cB[2], aB);
+    vbPushVert(a[0], a[1], -dA[0], -dA[1], wA, cA[0], cA[1], cA[2], aA);
+  }
+}
+
+// Upload + draw whatever is currently in the vertex buffer
+function flushStrokeBatch(targetFB, clear) {
+  const gl = GL.gl;
+  const prog = GL.strokeProg;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, targetFB);
+  gl.viewport(0, 0, GL.width, GL.height);
+  if (clear) {
+    gl.clearColor(0,0,0,0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+  if (_vertCount === 0) return;
+
+  gl.useProgram(prog.program);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, GL.vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, GL.vertexBuf.subarray(0, _vertCount * STRIDE_F), gl.DYNAMIC_DRAW);
+
+  const stride = STRIDE_F * 4;
+  // a_pos
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+  // a_dir
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, 8);
+  // a_halfW
+  gl.enableVertexAttribArray(2);
+  gl.vertexAttribPointer(2, 1, gl.FLOAT, false, stride, 16);
+  // a_color
+  gl.enableVertexAttribArray(3);
+  gl.vertexAttribPointer(3, 4, gl.FLOAT, false, stride, 20);
+
+  // Additive blend (looks closer to the original "lighter" composite, which
+  // is the default for this app). For "source-over" we use standard alpha
+  // blend. We'll pick per-frame based on the dominant frame's setting.
+  gl.enable(gl.BLEND);
+  // Premultiplied additive: out = src*srcAlpha + dst*1
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+  // Scale device pixels: we built positions in CSS pixels but resolution is in device pixels.
+  // Quick fix: multiply positions by DPR in the shader by adjusting u_resolution to CSS size.
+  gl.uniform2f(prog.uniforms['u_resolution'], GL.cssW, GL.cssH);
+
+  gl.drawArrays(gl.TRIANGLES, 0, _vertCount);
+  vbReset();
+}
+
+// Build vertex data for ALL past-frame strokes for the current viewFrame.
+// Called only when historyDirty flips.
+function buildHistoryGeom(viewFrameIdx, includePast) {
+  vbReset();
+  if (!includePast) return;
+  for (let i = 0; i < viewFrameIdx; i++) {
+    const pf = pastFactor(i, viewFrameIdx);
+    if (!pf || pf.alpha <= 0.005) continue;
+    const pastF = frames[i];
+    if (!pastF) continue;
+    for (const st of pastF.strokes) {
+      tessellateStroke(st, 1, { alphaMult: pf.alpha, widthMult: pf.thick });
+    }
+  }
+}
+
+// Build vertex data for current-frame "live" strokes at given local time
+function buildLiveGeom(viewFrameIdx, localTimeSec, liveReveal) {
+  vbReset();
+  const cur = frames[viewFrameIdx];
+  if (!cur) return;
+  const fd = cur.duration;
+  for (const st of cur.strokes) {
+    const prog = (typeof liveReveal === 'number') ? liveReveal : strokeProgressAt(st, localTimeSec, fd);
+    if (prog <= 0) continue;
+    const envA = (typeof liveReveal === 'number') ? 1 : strokeEnvelopeAlpha(st, localTimeSec, fd);
+    tessellateStroke(st, prog, { alphaMult: envA });
+  }
+  // In-progress drawing stroke
+  if (isDrawing && currentDrawStroke && currentDrawStroke.points.length) {
+    tessellateStroke(currentDrawStroke, 1, { alphaMult: 1 });
+  }
+}
+
+// ---------- Full-screen passes ----------
+function bindQuad(progLoc) {
+  const gl = GL.gl;
+  gl.bindBuffer(gl.ARRAY_BUFFER, GL.quadVBO);
+  gl.enableVertexAttribArray(progLoc ?? 0);
+  gl.vertexAttribPointer(progLoc ?? 0, 2, gl.FLOAT, false, 0, 0);
+  // Disable the rest so we don't have stray attrib state from stroke pass
+  gl.disableVertexAttribArray(1);
+  gl.disableVertexAttribArray(2);
+  gl.disableVertexAttribArray(3);
+}
+
+function drawBlur(srcTex, dstFB, dstW, dstH, stepX, stepY) {
+  const gl = GL.gl;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dstFB);
+  gl.viewport(0, 0, dstW, dstH);
+  gl.disable(gl.BLEND);
+  gl.useProgram(GL.blurProg.program);
+  gl.uniform2f(GL.blurProg.uniforms['u_step'], stepX, stepY);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.uniform1i(GL.blurProg.uniforms['u_input'], 0);
+  bindQuad(0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// Compute a representative glow amount for the current scene
+function getCurrentGlowParams() {
+  // Use the active frame's settings as the dominant glow look.
+  if (!frames.length) return { intensity: 0, radius: 0, bg: [0.024, 0.024, 0.047] };
+  const f = frames[cfi] || frames[0];
+  const s = f.settings;
+  const radius = (s.glow ?? 0);
+  const intensity = (radius > 0) ? Math.min(1.6, 0.6 + radius / 60) : 0;
+  const bgRgb = hexToRgbF(s.bgColor || '#06060c');
+  return { intensity, radius, bg: bgRgb };
+}
+
+// Render the editor / playback scene to canvas.
+// includeLive: true for editor and playback. liveReveal optional override (editor preview).
+function renderScene(viewFrameIdx, localTimeSec, opts) {
+  const gl = GL.gl;
+  const includePast = opts.includePast !== false;
+  const liveReveal = opts.liveReveal;
+  const showGrid = opts.grid;
+  const shake = opts.shake || 0;
+
+  if (!frames.length) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, GL.width, GL.height);
+    gl.disable(gl.BLEND);
+    gl.clearColor(0.024, 0.024, 0.047, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return;
+  }
+
+  const params = getCurrentGlowParams();
+
+  // --- Render history (past frames) ONLY if dirty ---
+  if (GL.historyDirty) {
+    buildHistoryGeom(viewFrameIdx, includePast);
+    flushStrokeBatch(GL.historyFB, true);
+    GL.historyDirty = false;
+  }
+
+  // --- Render live (current frame) every frame ---
+  buildLiveGeom(viewFrameIdx, localTimeSec, liveReveal);
+  flushStrokeBatch(GL.liveFB, true);
+
+  // --- Compose pass: history + live, mirrored, with bg, into composedFB ---
+  gl.bindFramebuffer(gl.FRAMEBUFFER, GL.composedFB);
+  gl.viewport(0, 0, GL.width, GL.height);
+  gl.disable(gl.BLEND);
+  gl.useProgram(GL.composeProg.program);
+  gl.uniform1i(GL.composeProg.uniforms['u_mirror'], getMirrorModeInt());
+  gl.uniform3f(GL.composeProg.uniforms['u_bg'], params.bg[0], params.bg[1], params.bg[2]);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GL.historyTex);
+  gl.uniform1i(GL.composeProg.uniforms['u_history'], 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, GL.liveTex);
+  gl.uniform1i(GL.composeProg.uniforms['u_live'], 1);
+  bindQuad(0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  // --- Glow: blur composedTex via half-res ping-pong ---
+  let glowTex = null;
+  if (params.radius > 0.5) {
+    // Pass 1: copy composed to blurA at half-res (identity blur with step=0)
+    drawBlur(GL.composedTex, GL.blurAFB, GL._blurW, GL._blurH, 0, 0);
+    const r = Math.max(1, params.radius / 4);
+    drawBlur(GL.blurATex, GL.blurBFB, GL._blurW, GL._blurH, r / GL._blurW, 0);
+    drawBlur(GL.blurBTex, GL.blurAFB, GL._blurW, GL._blurH, 0, r / GL._blurH);
+    if (params.radius > 30) {
+      drawBlur(GL.blurATex, GL.blurBFB, GL._blurW, GL._blurH, r / GL._blurW, 0);
+      drawBlur(GL.blurBTex, GL.blurAFB, GL._blurW, GL._blurH, 0, r / GL._blurH);
+    }
+    glowTex = GL.blurATex;
+  }
+
+  // --- Final pass: composed scene + glow, to screen, with optional shake offset ---
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const sx = shake > 0 ? (Math.random() - 0.5) * shake * GL.dpr : 0;
+  const sy = shake > 0 ? (Math.random() - 0.5) * shake * GL.dpr : 0;
+  gl.viewport(Math.round(sx), Math.round(sy), GL.width, GL.height);
+  gl.disable(gl.BLEND);
+  gl.useProgram(GL.finalProg.program);
+  gl.uniform1f(GL.finalProg.uniforms['u_glowIntensity'], params.intensity);
+  gl.uniform1f(GL.finalProg.uniforms['u_useGlow'], glowTex ? 1 : 0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GL.composedTex);
+  gl.uniform1i(GL.finalProg.uniforms['u_scene'], 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, glowTex || GL.composedTex);
+  gl.uniform1i(GL.finalProg.uniforms['u_glow'], 1);
+  bindQuad(0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+function drawEditor() {
+  if (!GL.gl) return;
+  if (!frames.length) {
+    const gl = GL.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, GL.width, GL.height);
+    gl.disable(gl.BLEND);
+    gl.clearColor(0.024, 0.024, 0.047, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    return;
+  }
+  const showPast = $('showGhosts')?.checked !== false;
+  const showGrid = $('showGrid')?.checked === true;
+  renderScene(cfi, 0, {
+    includePast: showPast,
+    liveReveal: previewScrub,
+    grid: showGrid,
+  });
+}
+
+
+// ========================================================================
+//  FRAME OPERATIONS
+// ========================================================================
+function insertAfter() {
+  if (!frames.length) {
+    frames.push(makeFrame('Frame 1', 1.0));
+    cfi = 0;
+  } else {
+    const prev = frames[cfi];
+    const nf = makeFrame('Frame', 1.0);
+    nf.settings = cloneP(prev.settings);
+    frames.splice(cfi + 1, 0, nf);
+    cfi++;
+  }
+  invalidateTimeCache();
+  renderAll();
+}
+function deleteFrame() {
+  if (!frames.length) return;
+  frames.splice(cfi, 1);
+  if (cfi >= frames.length) cfi = Math.max(0, frames.length - 1);
+  invalidateTimeCache();
+  renderAll();
+}
+function moveFrameUp() {
+  if (cfi <= 0) return;
+  [frames[cfi-1], frames[cfi]] = [frames[cfi], frames[cfi-1]];
+  cfi--;
+  invalidateTimeCache();
+  renderAll();
+}
+function moveFrameDown() {
+  if (cfi >= frames.length - 1) return;
+  [frames[cfi], frames[cfi+1]] = [frames[cfi+1], frames[cfi]];
+  cfi++;
+  invalidateTimeCache();
+  renderAll();
+}
+function copyFrame() {
+  if (!frames.length) return;
+  clipboard = cloneP(frames[cfi]);
+}
+function pasteFrame() {
+  if (!clipboard || !frames.length) return;
+  const keepDur = frames[cfi].duration;
+  const keepTitle = frames[cfi].title;
+  const keepGroups = frames[cfi].groups;
+  frames[cfi] = cloneP(clipboard);
+  frames[cfi].duration = keepDur;
+  frames[cfi].title = keepTitle;
+  frames[cfi].groups = keepGroups;
+  invalidateTimeCache();
+  renderAll();
+}
+function selectFrame(i) {
+  if (i < 0 || i >= frames.length) return;
+  cfi = i;
+  previewScrub = 1.0;
+  $('previewScrub').value = 100;
+  $('previewVal').textContent = '100%';
+  markDirty();
+  renderAll();
+  scrollToActiveFrame();
+}
+function goNext() { if (frames.length) selectFrame(Math.min(cfi + 1, frames.length - 1)); }
+function goPrev() { if (frames.length) selectFrame(Math.max(cfi - 1, 0)); }
+function gotoBeginning() {
+  if (!frames.length) return;
+  doStop();
+  cfi = 0;
+  markDirty();
+  renderAll();
+}
+
+function clearStrokes() {
+  if (!frames.length) return;
+  if (!frames[cfi].strokes.length) return;
+  frames[cfi].strokes = [];
+  drawEditor();
+  renderTimeline();
+  updInfo();
+}
+function undoStroke() {
+  if (!frames.length) return;
+  frames[cfi].strokes.pop();
+  drawEditor();
+  renderTimeline();
+  updInfo();
+}
+function copyPrevStrokes() {
+  for (let i = cfi - 1; i >= 0; i--) {
+    if (frames[i].strokes.length) {
+      frames[cfi].strokes = cloneP(frames[i].strokes);
+      drawEditor();
+      renderTimeline();
+      return;
+    }
+  }
+}
+
+function onPreviewScrub() {
+  previewScrub = (+$('previewScrub').value) / 100;
+  $('previewVal').textContent = Math.round(previewScrub * 100) + '%';
+  drawEditor();
+}
+
+function doRefresh() {
+  doStop();
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  invalidateTimeCache();
+  frameDrifts = {};
+  resizeC();
+  renderAll();
+  $('info').textContent = 'Refreshed & resynced!';
+  setTimeout(() => updInfo(), 2000);
+}
+
+function renderAll() {
+  drawEditor();
+  buildRightPanel();
+  renderTimeline();
+  updInfo();
+}
+
+function updInfo() {
+  const el = $('info');
+  if (!frames.length) { el.textContent = 'No frames — click + Add Frame'; return; }
+  const f = frames[cfi];
+  const absT = frameStartTime(cfi);
+  const grpNames = frameGroupNames(f);
+  el.textContent = `Frame ${cfi+1}/${frames.length} | @${displayTime(absT).toFixed(2)}s | dur:${displayDur(f.duration).toFixed(3)}s ${f.title ? '"'+f.title+'"' : ''} ${f.strokes.length ? '['+f.strokes.length+' strokes]' : ''} ${grpNames ? '['+grpNames+']' : ''}`;
+  $('strokeCountDisp').textContent = f.strokes.length + ' stroke' + (f.strokes.length === 1 ? '' : 's');
+}
+
+// ========================================================================
+//  MOUSE / TOUCH DRAWING
+// ========================================================================
+let isDrawing = false;
+let currentDrawStroke = null;
+let eraserMode = false;
+
+function toggleEraser() {
+  eraserMode = !eraserMode;
+  $('eraserBtn').classList.toggle('on', eraserMode);
+  $('cwContainer').classList.toggle('eraser', eraserMode);
+}
+
+function getCanvasPoint(evt) {
+  const r = cv.getBoundingClientRect();
+  const cx = (evt.clientX ?? evt.touches?.[0]?.clientX ?? 0) - r.left;
+  const cy = (evt.clientY ?? evt.touches?.[0]?.clientY ?? 0) - r.top;
+  return { x: cx, y: cy };
+}
+
+function startStroke(evt) {
+  if (playing) return;
+  if (!frames.length) return;
+  if (eraserMode) {
+    eraseAt(getCanvasPoint(evt));
+    isDrawing = true;
+    currentDrawStroke = null;
+    return;
+  }
+  isDrawing = true;
+  const p = getCanvasPoint(evt);
+  const settingsSnapshot = cloneP(frames[cfi].settings);
+  currentDrawStroke = {
+    points: [{ x: p.x, y: p.y }],
+    settings: settingsSnapshot,
+  };
+  previewScrub = 1.0;
+  $('previewScrub').value = 100;
+  $('previewVal').textContent = '100%';
+  drawEditor();
+}
+
+function moveStroke(evt) {
+  if (!isDrawing) return;
+  const p = getCanvasPoint(evt);
+  if (eraserMode) { eraseAt(p); return; }
+  if (!currentDrawStroke) return;
+  const last = currentDrawStroke.points[currentDrawStroke.points.length - 1];
+  const d = Math.hypot(p.x - last.x, p.y - last.y);
+  if (d < 1.5) return;
+  currentDrawStroke.points.push({ x: p.x, y: p.y });
+  drawEditor();
+}
+
+function endStroke(evt) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  if (eraserMode) { return; }
+  if (!currentDrawStroke) return;
+  if (currentDrawStroke.points.length >= 1) {
+    frames[cfi].strokes.push(currentDrawStroke);
+  }
+  currentDrawStroke = null;
+  drawEditor();
+  renderTimeline();
+  updInfo();
+}
+
+function eraseAt(p) {
+  const R = 14;
+  const before = frames[cfi].strokes.length;
+  frames[cfi].strokes = frames[cfi].strokes.filter(s => {
+    for (const pt of s.points) {
+      if (Math.hypot(pt.x - p.x, pt.y - p.y) < R) return false;
+    }
+    return true;
+  });
+  if (frames[cfi].strokes.length !== before) {
+    drawEditor();
+    renderTimeline();
+    updInfo();
+  }
+}
+
+cv.addEventListener('mousedown', e => { if (e.button === 0) { e.preventDefault(); startStroke(e); } });
+window.addEventListener('mousemove', e => { if (isDrawing) moveStroke(e); });
+window.addEventListener('mouseup',   e => { if (isDrawing) endStroke(e); });
+cv.addEventListener('touchstart', e => { e.preventDefault(); startStroke(e); }, { passive: false });
+cv.addEventListener('touchmove',  e => { e.preventDefault(); moveStroke(e); }, { passive: false });
+cv.addEventListener('touchend',   e => { e.preventDefault(); endStroke(e); });
+
+// ========================================================================
+//  RIGHT PANEL BUILDER
+// ========================================================================
+function buildRightPanel() {
+  const ct = $('partC');
+  ct.innerHTML = '';
+
+  if (!frames.length) {
+    const note = document.createElement('div');
+    note.style.cssText = 'padding:20px;text-align:center;color:var(--txdd);font-size:11px;';
+    note.textContent = 'Add a frame to begin editing settings.';
+    ct.appendChild(note);
+    return;
+  }
+
+  const fs = frames[cfi].settings;
+
+  let firstGroup = true;
+  for (const gname of SETTINGS_GROUPS) {
+    const g = document.createElement('div'); g.className = 'pg';
+    if (firstGroup) { g.classList.add('a'); firstGroup = false; }
+    const h = document.createElement('div'); h.className = 'pgh';
+    h.innerHTML = `<span>${gname}</span>`;
+    h.onclick = () => {
+      const wasOpen = g.classList.contains('a');
+      document.querySelectorAll('.pg').forEach(x => x.classList.remove('a'));
+      if (!wasOpen) g.classList.add('a');
+    };
+    g.appendChild(h);
+    const b = document.createElement('div'); b.className = 'pgb';
+
+    for (const def of SETTINGS_DEFS) {
+      if (def.group !== gname) continue;
+      const row = document.createElement('div');
+      row.className = 'sr';
+      const lbl = document.createElement('label');
+      lbl.textContent = def.label;
+      if (def.tip) lbl.title = def.tip;
+      row.appendChild(lbl);
+
+      if (def.type === 'color') {
+        const cp = document.createElement('input');
+        cp.type = 'color';
+        cp.value = fs[def.key] || def.def;
+        cp.oninput = () => {
+          fs[def.key] = cp.value;
+          markDirty();
+          drawEditor();
+          renderTimeline();
+        };
+        row.appendChild(cp);
+        const txt = document.createElement('span');
+        txt.style.cssText = 'flex:1;font-size:9px;color:var(--txdd);font-family:JetBrains Mono,monospace;';
+        txt.textContent = cp.value.toUpperCase();
+        cp.addEventListener('input', () => { txt.textContent = cp.value.toUpperCase(); });
+        row.appendChild(txt);
+      } else if (def.type === 'check') {
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'chk';
+        cb.checked = !!fs[def.key];
+        cb.onchange = () => {
+          fs[def.key] = cb.checked;
+          markDirty();
+          drawEditor();
+        };
+        row.appendChild(cb);
+        const hint = document.createElement('span');
+        hint.style.cssText = 'flex:1;font-size:9px;color:var(--txdd);';
+        hint.textContent = def.tip || '';
+        row.appendChild(hint);
+      } else if (def.type === 'select') {
+        const sel = document.createElement('select');
+        for (const opt of def.options) {
+          const o = document.createElement('option');
+          o.value = opt; o.textContent = opt;
+          sel.appendChild(o);
+        }
+        sel.value = fs[def.key] || def.def;
+        sel.onchange = () => { fs[def.key] = sel.value; markDirty(); drawEditor(); renderTimeline(); };
+        row.appendChild(sel);
+      } else {
+        const sl = document.createElement('input');
+        sl.type = 'range';
+        sl.min = def.min; sl.max = def.max; sl.step = def.step;
+        sl.value = fs[def.key] ?? def.def;
+        const ni = document.createElement('input');
+        ni.type = 'number';
+        ni.min = def.min; ni.max = def.max; ni.step = def.step;
+        ni.value = fs[def.key] ?? def.def;
+        const onEdit = v => {
+          let n = +v;
+          if (isNaN(n)) return;
+          n = clamp(n, def.min, def.max);
+          sl.value = n; ni.value = n;
+          fs[def.key] = n;
+          markDirty();
+          drawEditor();
+          renderTimeline();
+        };
+        sl.oninput = () => onEdit(sl.value);
+        ni.onchange = () => onEdit(ni.value);
+        ni.oninput  = () => onEdit(ni.value);
+        row.appendChild(sl);
+        row.appendChild(ni);
+      }
+      b.appendChild(row);
+      if (def.tip && def.type !== 'check') {
+        const hint = document.createElement('div');
+        hint.className = 'hint';
+        hint.textContent = def.tip;
+        b.appendChild(hint);
+      }
+    }
+
+    const safBtn = document.createElement('button');
+    safBtn.className = 'saf-btn';
+    safBtn.textContent = '\u2B07 Apply "' + gname + '" to All Frames';
+    (function(groupName) {
+      safBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (!confirm(`Apply current "${groupName}" settings to all frames?`)) return;
+        const keys = SETTINGS_DEFS.filter(d => d.group === groupName).map(d => d.key);
+        for (let i = 0; i < frames.length; i++) {
+          for (const k of keys) frames[i].settings[k] = cloneP(frames[cfi].settings[k]);
+        }
+        markDirty();
+        renderTimeline();
+        drawEditor();
+      };
+    })(gname);
+    b.appendChild(safBtn);
+
+    g.appendChild(b);
+    ct.appendChild(g);
+  }
+}
+
+// ========================================================================
+//  TIMELINE RENDER
+// ========================================================================
+const CARD_WIDTH = 134;
+let _cardDomMap = new Map();
+let _lastRenderedActiveIdx = -1;
+
+function renderTimeline(force) {
+  const strip = $('frameStrip');
+  const wrap = $('stripWrap');
+  const editMode = isEditBoxChecked();
+
+  const totalWidth = frames.length * CARD_WIDTH + 12;
+  strip.style.width = totalWidth + 'px';
+  strip.style.minWidth = totalWidth + 'px';
+
+  const scrollLeft = wrap.scrollLeft;
+  const viewWidth = wrap.clientWidth;
+  const startIdx = Math.max(0, Math.floor((scrollLeft - 12) / CARD_WIDTH) - 1);
+  const endIdx = Math.min(frames.length - 1, Math.ceil((scrollLeft + viewWidth) / CARD_WIDTH) + 1);
+
+  strip.innerHTML = '';
+  _cardDomMap.clear();
+
+  if (startIdx > 0) {
+    const spacer = document.createElement('div');
+    spacer.style.width = (startIdx * CARD_WIDTH) + 'px';
+    spacer.style.flexShrink = '0';
+    strip.appendChild(spacer);
+  }
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    const f = frames[i];
+    if (!f) continue;
+    const card = document.createElement('div');
+    card.className = 'frame-card';
+    if (i === cfi) card.classList.add('active');
+    if (f.strokes && f.strokes.length) card.classList.add('hasstrokes');
+    if (f.groups && f.groups.length) card.classList.add('in-group');
+
+    _cardDomMap.set(i, card);
+
+    const hdr = document.createElement('div');
+    hdr.className = 'fc-header';
+    const idx = document.createElement('span');
+    idx.className = 'fc-idx';
+    idx.textContent = '#' + (i + 1);
+
+    const abs = document.createElement('span');
+    abs.className = 'fc-abs';
+    abs.textContent = '@' + displayTime(frameStartTime(i)).toFixed(2) + 's';
+    hdr.appendChild(idx);
+    if (f.groups && f.groups.length) {
+      const grpSpan = document.createElement('span');
+      grpSpan.className = 'fc-grp';
+      f.groups.forEach((gid, gi) => {
+        const g = groups.find(x => x.id === gid);
+        const name = g ? g.name : '?';
+        const color = getGroupColor(gid);
+        const s = document.createElement('span');
+        s.style.color = color;
+        s.textContent = (gi > 0 ? ', ' : '') + name;
+        grpSpan.appendChild(s);
+      });
+      hdr.appendChild(grpSpan);
+    }
+    hdr.appendChild(abs);
+    card.appendChild(hdr);
+
+    const title = document.createElement('div');
+    title.className = 'fc-title';
+    title.textContent = f.title || '';
+    (function(frameIdx, titleEl) {
+      titleEl.addEventListener('click', function(e) {
+        if (!isEditBoxChecked()) return;
+        e.stopPropagation();
+        if (titleEl.querySelector('input')) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'fc-title-input';
+        input.value = frames[frameIdx].title || '';
+        function commitEdit() {
+          frames[frameIdx].title = input.value;
+          titleEl.textContent = input.value || '';
+          updInfo();
+        }
+        input.addEventListener('keydown', function(ev) {
+          if (ev.key === 'Enter') { commitEdit(); ev.preventDefault(); }
+          if (ev.key === 'Escape') { titleEl.textContent = frames[frameIdx].title || ''; }
+          ev.stopPropagation();
+        });
+        input.addEventListener('blur', commitEdit);
+        input.addEventListener('click', ev => ev.stopPropagation());
+        input.addEventListener('mousedown', ev => ev.stopPropagation());
+        titleEl.textContent = '';
+        titleEl.appendChild(input);
+        input.focus();
+        input.select();
+      });
+    })(i, title);
+    card.appendChild(title);
+
+    const scSpan = document.createElement('div');
+    scSpan.className = 'fc-sc';
+    scSpan.style.cssText = 'padding:0 8px;font-size:8px;color:var(--ac2);font-family:JetBrains Mono,monospace;';
+    scSpan.textContent = (f.strokes?.length || 0) + 'S';
+    card.appendChild(scSpan);
+
+    const driftDiv = document.createElement('div');
+    driftDiv.className = 'fc-drift';
+    if (frameDrifts[i] !== undefined) {
+      const d = frameDrifts[i];
+      const absD = Math.abs(d);
+      if (absD < 1) {
+        driftDiv.textContent = '\u00B10ms';
+        driftDiv.classList.add('perfect');
+      } else {
+        driftDiv.textContent = (d > 0 ? '+' : '') + d.toFixed(1) + 'ms ' + (d > 0 ? 'ahead' : 'behind');
+        driftDiv.classList.add(d > 0 ? 'ahead' : 'behind');
+      }
+    }
+    card.appendChild(driftDiv);
+
+    const durWrap = document.createElement('div');
+    durWrap.className = 'fc-duration';
+
+    const durRow = document.createElement('div');
+    durRow.className = 'fc-dur-row';
+    const durLabel = document.createElement('label');
+    durLabel.textContent = 'dur';
+
+    const btnDown = document.createElement('button');
+    btnDown.className = 'fc-dur-btn' + (editMode ? '' : ' locked');
+    btnDown.textContent = '\u2212';
+    btnDown.title = '\u221210ms';
+
+    const durInput = document.createElement('input');
+    durInput.type = 'number';
+    durInput.className = 'fc-dur-input' + (editMode ? ' editing' : '');
+    durInput.value = +displayDur(f.duration).toFixed(3);
+    durInput.step = '0.01';
+    durInput.min = '0';
+
+    const btnUp = document.createElement('button');
+    btnUp.className = 'fc-dur-btn' + (editMode ? '' : ' locked');
+    btnUp.textContent = '+';
+    btnUp.title = '+10ms';
+
+    const durUnit = document.createElement('span');
+    durUnit.className = 'fc-dur-unit';
+    durUnit.textContent = 's';
+
+    (function(frameIdx) {
+      function updateDur(displayedV) {
+        if (isNaN(displayedV) || displayedV < 0) displayedV = 0;
+        displayedV = Math.round(displayedV * 1000) / 1000;
+        const realV = Math.round(storeDur(displayedV) * 1e6) / 1e6;
+        frames[frameIdx].duration = realV;
+        durInput.value = +displayDur(realV).toFixed(3);
+        invalidateTimeCache();
+        renderTimeline();
+        updInfo();
+      }
+      durInput.addEventListener('change', function() { updateDur(parseFloat(this.value)); });
+      durInput.addEventListener('focus', function() { this.select(); });
+      durInput.addEventListener('click', e => e.stopPropagation());
+      durInput.addEventListener('mousedown', e => e.stopPropagation());
+      durInput.addEventListener('blur', function() { updateDur(parseFloat(this.value)); });
+      durInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { updateDur(parseFloat(this.value)); durInput.blur(); }
+        e.stopPropagation();
+      });
+      btnDown.addEventListener('click', function(e) {
+        e.stopPropagation();
+        updateDur(Math.max(0, displayDur(frames[frameIdx].duration) - 0.01));
+      });
+      btnUp.addEventListener('click', function(e) {
+        e.stopPropagation();
+        updateDur(displayDur(frames[frameIdx].duration) + 0.01);
+      });
+      btnDown.addEventListener('mousedown', e => e.stopPropagation());
+      btnUp.addEventListener('mousedown', e => e.stopPropagation());
+    })(i);
+
+    durRow.appendChild(durLabel);
+    durRow.appendChild(btnDown);
+    durRow.appendChild(durInput);
+    durRow.appendChild(btnUp);
+    durRow.appendChild(durUnit);
+    durWrap.appendChild(durRow);
+    card.appendChild(durWrap);
+
+    (function(frameIdx) {
+      card.addEventListener('click', function() { selectFrame(frameIdx); });
+    })(i);
+
+    strip.appendChild(card);
+  }
+
+  const rightSpaceCount = frames.length - endIdx - 1;
+  if (rightSpaceCount > 0) {
+    const spacer = document.createElement('div');
+    spacer.style.width = (rightSpaceCount * CARD_WIDTH) + 'px';
+    spacer.style.flexShrink = '0';
+    strip.appendChild(spacer);
+  }
+
+  _lastRenderedActiveIdx = cfi;
+}
+
+let _scrollRenderTimer = null;
+$('stripWrap').addEventListener('scroll', () => {
+  if (_scrollRenderTimer) return;
+  _scrollRenderTimer = requestAnimationFrame(() => {
+    _scrollRenderTimer = null;
+    renderTimeline();
+  });
+});
+
+function scrollToActiveFrame() {
+  const wrap = $('stripWrap');
+  const targetLeft = cfi * CARD_WIDTH - wrap.clientWidth / 2 + CARD_WIDTH / 2;
+  wrap.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+}
+
+function swapActiveFrame(newIdx) {
+  if (newIdx === _lastRenderedActiveIdx) return;
+  const oldCard = _cardDomMap.get(_lastRenderedActiveIdx);
+  const newCard = _cardDomMap.get(newIdx);
+  if (oldCard) oldCard.classList.remove('active');
+  if (newCard) {
+    newCard.classList.add('active');
+    const wrap = $('stripWrap');
+    const cardLeft = newIdx * CARD_WIDTH;
+    const cardRight = cardLeft + CARD_WIDTH;
+    if (cardLeft < wrap.scrollLeft || cardRight > wrap.scrollLeft + wrap.clientWidth) {
+      wrap.scrollTo({ left: Math.max(0, cardLeft - wrap.clientWidth / 2 + CARD_WIDTH / 2), behavior: 'auto' });
+    }
+  }
+  _lastRenderedActiveIdx = newIdx;
+}
+
+// ========================================================================
+//  GROUPS
+// ========================================================================
+function createGroup() {
+  const name = $('grpName').value.trim();
+  if (!name) { alert('Enter a group name'); return; }
+  const g = { id: 'g' + (nextGroupId++), name };
+  groups.push(g);
+  $('grpName').value = '';
+  rebuildGroupSelect();
+  $('grpSelect').value = g.id;
+}
+function rebuildGroupSelect() {
+  const sel = $('grpSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— None —</option>';
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g.id; o.textContent = g.name;
+    sel.appendChild(o);
+  }
+  sel.value = cur;
+}
+function assignGroup() {
+  const gid = $('grpSelect').value;
+  if (!gid) { alert('Select a group first'); return; }
+  if (!frames.length) return;
+  const f = frames[cfi];
+  if (!f.groups) f.groups = [];
+  if (!f.groups.includes(gid)) f.groups.push(gid);
+  renderTimeline();
+  updInfo();
+}
+function unassignGroup() {
+  if (!frames.length) return;
+  const gid = $('grpSelect').value;
+  if (!gid) { alert('Select a group first'); return; }
+  const f = frames[cfi];
+  if (f.groups) f.groups = f.groups.filter(x => x !== gid);
+  renderTimeline();
+  updInfo();
+}
+function renameGroup() {
+  const gid = $('grpSelect').value;
+  if (!gid) return;
+  const g = groups.find(x => x.id === gid);
+  if (!g) return;
+  const name = prompt('New name:', g.name);
+  if (name && name.trim()) { g.name = name.trim(); rebuildGroupSelect(); $('grpSelect').value = gid; renderTimeline(); }
+}
+function deleteGroup() {
+  const gid = $('grpSelect').value;
+  if (!gid) return;
+  groups = groups.filter(x => x.id !== gid);
+  for (const f of frames) {
+    if (f.groups) f.groups = f.groups.filter(x => x !== gid);
+  }
+  rebuildGroupSelect();
+  renderTimeline();
+}
+function onGroupSelect() {}
+function getGroupFrames(gid) {
+  const out = [];
+  for (let i = 0; i < frames.length; i++) {
+    if (frames[i].groups && frames[i].groups.includes(gid)) out.push(i);
+  }
+  return out;
+}
+function frameGroupNames(f) {
+  if (!f.groups || !f.groups.length) return '';
+  return f.groups.map(gid => {
+    const g = groups.find(x => x.id === gid);
+    return g ? g.name : '?';
+  }).join(', ');
+}
+function getActiveGroupId() { return $('grpSelect').value || null; }
+
+
+// ========================================================================
+//  PLAYBACK — DRIFT CORRECTION
+// ========================================================================
+let groupPlayMode = false;
+let groupPlayId = null;
+
+let _lastFrameRenderTime = 0;
+let _playCurrentFrameIdx = 0;
+let _playFrameLocalTime = 0;
+let _playLastPerfTime = 0;
+let _playSpeedMultiplier = 1.0;
+let _playDriftMs = 0;
+let _shakeUntil = 0;
+let _shakePx = 0;
+
+function showSyncIndicator(state) {
+  const el = $('syncInd');
+  if (state === 'synced') { el.className = 'sync-indicator synced'; el.textContent = 'SYNCED'; }
+  else if (state === 'drifting') { el.className = 'sync-indicator drifting'; el.textContent = 'CORRECTING'; }
+  else { el.className = 'sync-indicator'; el.textContent = ''; }
+}
+
+function getRealTimeSec() {
+  if (audioEl && !audioEl.paused && audioEl.duration > 0) return audioEl.currentTime;
+  return (playOff + (performance.now() - playT0) * currentSpeed) / 1000;
+}
+
+function doPlay() {
+  if (playing) { doStop(); return; }
+  if (!frames.length) { alert('Add frames first'); return; }
+  playing = true;
+  groupPlayMode = false;
+  frameDrifts = {};
+  $('playBtn').textContent = '\u23F8 Pause';
+  $('fsPlayBtn').textContent = '\u23F8 Pause';
+  $('cwContainer').classList.add('playing');
+
+  const startSec = frameStartTime(cfi);
+  _playCurrentFrameIdx = cfi;
+  _playFrameLocalTime = 0;
+  _playSpeedMultiplier = 1.0;
+  _playDriftMs = 0;
+  _lastFrameRenderTime = 0;
+  triggerShake(cfi);
+  markDirty();
+
+  if (audioBlob) {
+    if (!audioEl) audioEl = new Audio();
+    audioEl.src = URL.createObjectURL(audioBlob);
+    audioEl.currentTime = startSec;
+    const startPlayback = () => {
+      showSyncIndicator('synced');
+      try { audioEl.preservesPitch = true; audioEl.playbackRate = currentSpeed; } catch(_) {}
+      audioEl.play().catch(() => {});
+      playT0 = performance.now();
+      playOff = startSec * 1000;
+      _playLastPerfTime = performance.now();
+      animLoop();
+    };
+    if (audioEl.readyState >= 3) startPlayback();
+    else {
+      audioEl.addEventListener('canplay', startPlayback, { once: true });
+      setTimeout(() => { if (playing && !animId) startPlayback(); }, 500);
+    }
+  } else {
+    showSyncIndicator('synced');
+    playT0 = performance.now();
+    playOff = startSec * 1000;
+    _playLastPerfTime = performance.now();
+    animLoop();
+  }
+}
+
+function groupPlay() {
+  const gid = getActiveGroupId();
+  if (!gid) { alert('Select a group first'); return; }
+  const gFrames = getGroupFrames(gid);
+  if (!gFrames.length) { alert('No frames in this group'); return; }
+  if (playing) doStop();
+  playing = true;
+  groupPlayMode = true;
+  groupPlayId = gid;
+  frameDrifts = {};
+  $('playBtn').textContent = '\u23F8 Pause';
+  $('fsPlayBtn').textContent = '\u23F8 Pause';
+  $('cwContainer').classList.add('playing');
+
+  cfi = gFrames[0];
+  const startSec = frameStartTime(cfi);
+  _playCurrentFrameIdx = cfi;
+  _playFrameLocalTime = 0;
+  _playSpeedMultiplier = 1.0;
+  _playDriftMs = 0;
+  _lastFrameRenderTime = 0;
+  triggerShake(cfi);
+  markDirty();
+
+  if (audioBlob) {
+    if (!audioEl) audioEl = new Audio();
+    audioEl.src = URL.createObjectURL(audioBlob);
+    audioEl.currentTime = startSec;
+    const startPlayback = () => {
+      showSyncIndicator('synced');
+      try { audioEl.preservesPitch = true; audioEl.playbackRate = currentSpeed; } catch(_) {}
+      audioEl.play().catch(() => {});
+      playT0 = performance.now();
+      playOff = startSec * 1000;
+      _playLastPerfTime = performance.now();
+      animLoop();
+    };
+    if (audioEl.readyState >= 3) startPlayback();
+    else {
+      audioEl.addEventListener('canplay', startPlayback, { once: true });
+      setTimeout(() => { if (playing && !animId) startPlayback(); }, 500);
+    }
+  } else {
+    showSyncIndicator('synced');
+    playT0 = performance.now();
+    playOff = startSec * 1000;
+    _playLastPerfTime = performance.now();
+    animLoop();
+  }
+}
+
+function triggerShake(frameIdx) {
+  const f = frames[frameIdx];
+  if (!f) return;
+  const sh = f.settings?.shake || 0;
+  if (sh > 0) {
+    _shakeUntil = performance.now() + 220;
+    _shakePx = sh;
+  } else {
+    _shakePx = 0;
+  }
+}
+
+function animLoop() {
+  if (!playing) return;
+  const now = performance.now();
+
+  const elapsed = now - _lastFrameRenderTime;
+  if (_lastFrameRenderTime > 0 && elapsed < playbackFrameInterval) {
+    animId = requestAnimationFrame(animLoop);
+    return;
+  }
+  _lastFrameRenderTime = now;
+
+  const dtReal = (now - _playLastPerfTime) / 1000;
+  _playLastPerfTime = now;
+  _playFrameLocalTime += dtReal * _playSpeedMultiplier * currentSpeed;
+
+  const curFrameDur = frames[_playCurrentFrameIdx]?.duration ?? 1;
+
+  if (_playFrameLocalTime >= curFrameDur) {
+    const overshoot = _playFrameLocalTime - curFrameDur;
+    _playFrameLocalTime = 0;
+    _playCurrentFrameIdx++;
+
+    if (_playCurrentFrameIdx >= frames.length) { doStop(); return; }
+
+    // Frame just changed -> past frame layer is now stale, must rebuild
+    markDirty();
+
+    const expectedTimeSec = frameStartTime(_playCurrentFrameIdx);
+    const realTimeSec = getRealTimeSec();
+    const driftSec = realTimeSec - expectedTimeSec;
+    _playDriftMs = driftSec * 1000;
+    frameDrifts[_playCurrentFrameIdx] = _playDriftMs;
+
+    const nextFrameDur = frames[_playCurrentFrameIdx]?.duration ?? 1;
+    const nextFrameDurMs = nextFrameDur * 1000;
+    const adjustedDurMs = nextFrameDurMs - _playDriftMs;
+
+    if (adjustedDurMs > 0 && nextFrameDurMs > 0) {
+      _playSpeedMultiplier = nextFrameDurMs / adjustedDurMs;
+      _playSpeedMultiplier = Math.max(0.5, Math.min(2.0, _playSpeedMultiplier));
+    } else _playSpeedMultiplier = 1.0;
+
+    _playFrameLocalTime = overshoot * _playSpeedMultiplier;
+
+    triggerShake(_playCurrentFrameIdx);
+
+    if (Math.abs(_playDriftMs) > 10) showSyncIndicator('drifting');
+    else showSyncIndicator('synced');
+  }
+
+  // Group-play bounds
+  if (groupPlayMode && groupPlayId) {
+    const gFrames = getGroupFrames(groupPlayId);
+    if (gFrames.length) {
+      const lastIdx = gFrames[gFrames.length - 1];
+      const curSec = frameStartTime(_playCurrentFrameIdx) + _playFrameLocalTime;
+      const groupEnd = frameStartTime(lastIdx) + frames[lastIdx].duration;
+      if (curSec >= groupEnd) {
+        doStop();
+        cfi = gFrames[0];
+        markDirty();
+        renderAll();
+        return;
+      }
+    }
+  }
+
+  const curSec = frameStartTime(_playCurrentFrameIdx) + _playFrameLocalTime;
+  const dispSec = displayTime(curSec);
+  const tStr = `${Math.floor(dispSec/60)}:${(dispSec%60).toFixed(3).padStart(6,'0')}`;
+  $('tDisp').textContent = tStr;
+  const fsTDisp = $('fsTDisp');
+  if (fsTDisp) fsTDisp.textContent = tStr;
+
+  const driftDisp = $('driftDisp');
+  if (driftDisp) {
+    if (Math.abs(_playDriftMs) > 2) {
+      driftDisp.textContent = `drift: ${_playDriftMs > 0 ? '+' : ''}${_playDriftMs.toFixed(1)}ms`;
+      driftDisp.style.color = Math.abs(_playDriftMs) > 10 ? '#ff6600' : 'var(--txdd)';
+    } else driftDisp.textContent = '';
+  }
+
+  // Render the scene (WebGL — fast even with hundreds of strokes)
+  const shake = (now < _shakeUntil) ? _shakePx * ((_shakeUntil - now) / 220) : 0;
+  renderScene(_playCurrentFrameIdx, _playFrameLocalTime, {
+    includePast: true,
+    shake,
+  });
+
+  if (_playCurrentFrameIdx !== cfi) {
+    swapActiveFrame(_playCurrentFrameIdx);
+    updInfo();
+  }
+
+  const totSec = totalDuration();
+  if (curSec > totSec + 2) { doStop(); return; }
+
+  animId = requestAnimationFrame(animLoop);
+}
+
+function doStop() {
+  playing = false;
+  groupPlayMode = false;
+  $('playBtn').textContent = '\u25B6 Play';
+  $('fsPlayBtn').textContent = '\u25B6 Play';
+  $('cwContainer').classList.remove('playing');
+  showSyncIndicator('');
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  if (audioEl) audioEl.pause();
+  _playDriftMs = 0;
+  _playSpeedMultiplier = 1.0;
+  _lastFrameRenderTime = 0;
+  const driftDisp = $('driftDisp');
+  if (driftDisp) driftDisp.textContent = '';
+  cfi = _playCurrentFrameIdx;
+  if (cfi >= frames.length) cfi = Math.max(0, frames.length - 1);
+  markDirty();
+  drawEditor();
+  renderTimeline(true);
+  updInfo();
+}
+
+// ========================================================================
+//  FILE I/O
+// ========================================================================
+$('wavIn').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  $('wavNm').textContent = f.name;
+  audioBlob = f;
+};
+
+function saveProj() {
+  const data = { frames, groups, nextGroupId, version: 1, app: 'StrokeFlow' };
+  const b = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = 'strokeflow.json'; a.click();
+}
+
+$('loadIn').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const p = JSON.parse(await f.text());
+    frames = p.frames || [];
+    groups = p.groups || [];
+    nextGroupId = p.nextGroupId || 1;
+    for (const fr of frames) {
+      if (!fr.groups) fr.groups = [];
+      if (!fr.strokes) fr.strokes = [];
+      if (!fr.settings) fr.settings = defaultSettings();
+      for (const d of SETTINGS_DEFS) {
+        if (fr.settings[d.key] === undefined) fr.settings[d.key] = d.def;
+      }
+      for (const st of fr.strokes) {
+        if (!st.settings) st.settings = cloneP(fr.settings);
+        for (const d of SETTINGS_DEFS) {
+          if (st.settings[d.key] === undefined) st.settings[d.key] = d.def;
+        }
+      }
+    }
+    cfi = 0;
+    invalidateTimeCache();
+    rebuildGroupSelect();
+    markDirty();
+    renderAll();
+  } catch (err) { alert('Load error: ' + err.message); }
+};
+
+// ========================================================================
+//  BEAT TAP
+// ========================================================================
+let btActive = false;
+let btAudioEl = null;
+let btStartTime = 0;
+let btBeatTimes = [];
+let btTimerAnim = null;
+let btAudioDuration = 0;
+let btTargetGroupId = null;
+let btGroupStartSec = 0;
+let btGroupEndSec = 0;
+
+function rebuildBtTargetSelect() {
+  const sel = $('btTargetSelect');
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">All frames (replace everything)</option>';
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g.id;
+    o.textContent = `Group: ${g.name}`;
+    sel.appendChild(o);
+  }
+  const activeGid = getActiveGroupId();
+  if (activeGid) sel.value = activeGid;
+  else sel.value = curVal || '';
+  updateBtHints();
+}
+function updateBtHints() {
+  const sel = $('btTargetSelect');
+  const isGroup = sel.value !== '';
+  $('btGroupHint').style.display = isGroup ? '' : 'none';
+  $('btAllHint').style.display = isGroup ? 'none' : '';
+}
+$('btTargetSelect').addEventListener('change', updateBtHints);
+
+function startBeatTap() {
+  if (!audioBlob) { alert('Load an audio file first before using Beat Tap.'); return; }
+  rebuildBtTargetSelect();
+  $('btCountdownArea').style.display = 'none';
+  $('btActiveArea').style.display = 'none';
+  $('btStartBtns').style.display = 'flex';
+  $('btStopBtns').style.display = 'none';
+  $('btMod').classList.add('sh');
+}
+function closeBeatTap() {
+  btActive = false;
+  if (btAudioEl) { btAudioEl.pause(); btAudioEl = null; }
+  if (btTimerAnim) { cancelAnimationFrame(btTimerAnim); btTimerAnim = null; }
+  $('btMod').classList.remove('sh');
+}
+function cancelBeatTap() { closeBeatTap(); }
+
+async function beginBeatTapCountdown() {
+  const targetGid = $('btTargetSelect').value || null;
+  btTargetGroupId = targetGid;
+
+  if (btTargetGroupId) {
+    const gFrames = getGroupFrames(btTargetGroupId);
+    if (!gFrames.length) { alert('Selected group has no frames assigned.'); return; }
+    const firstIdx = gFrames[0];
+    const lastIdx = gFrames[gFrames.length - 1];
+    btGroupStartSec = frameStartTime(firstIdx);
+    btGroupEndSec = frameStartTime(lastIdx) + frames[lastIdx].duration;
+  } else {
+    btGroupStartSec = 0;
+    btGroupEndSec = 0;
+  }
+
+  $('btStartBtns').style.display = 'none';
+  $('btCountdownArea').style.display = '';
+
+  btAudioEl = new Audio();
+  btAudioEl.src = URL.createObjectURL(audioBlob);
+  await new Promise(resolve => {
+    btAudioEl.addEventListener('loadedmetadata', resolve, { once: true });
+    if (btAudioEl.readyState >= 1) resolve();
+  });
+  btAudioDuration = btAudioEl.duration || 60;
+  if (!btTargetGroupId) btGroupEndSec = btAudioDuration;
+
+  for (let i = 3; i >= 1; i--) {
+    $('btCountdownNum').textContent = i;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  $('btCountdownArea').style.display = 'none';
+  $('btActiveArea').style.display = '';
+  $('btStopBtns').style.display = 'flex';
+  $('btBeatCount').textContent = '0';
+  $('btElapsed').textContent = '0:00.000';
+  $('btStatus').textContent = 'Listening... press B!';
+
+  btBeatTimes = [];
+  btActive = true;
+  btStartTime = performance.now();
+
+  const audioStart = btTargetGroupId ? btGroupStartSec : 0;
+  btAudioEl.currentTime = audioStart;
+  btAudioEl.play().catch(() => {});
+
+  const checkEnd = () => {
+    if (!btActive) return;
+    if (btTargetGroupId && btAudioEl.currentTime >= btGroupEndSec) { finishBeatTap(); return; }
+    if (btAudioEl.ended) { finishBeatTap(); return; }
+    requestAnimationFrame(checkEnd);
+  };
+  btAudioEl.addEventListener('ended', () => { if (btActive) finishBeatTap(); }, { once: true });
+  if (btTargetGroupId) requestAnimationFrame(checkEnd);
+
+  function updateBtTimer() {
+    if (!btActive) return;
+    const elapsed = (performance.now() - btStartTime) / 1000;
+    const m = Math.floor(elapsed / 60);
+    const s = (elapsed % 60).toFixed(3).padStart(6, '0');
+    $('btElapsed').textContent = `${m}:${s}`;
+    btTimerAnim = requestAnimationFrame(updateBtTimer);
+  }
+  updateBtTimer();
+}
+
+function btHandleKey(e) {
+  if (!btActive) return;
+  if (e.key.toLowerCase() !== 'b') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  e.preventDefault();
+  const elapsed = (performance.now() - btStartTime) / 1000;
+  btBeatTimes.push(elapsed);
+  const countEl = $('btBeatCount');
+  countEl.textContent = btBeatTimes.length;
+  countEl.classList.remove('bt-flash');
+  void countEl.offsetWidth;
+  countEl.classList.add('bt-flash');
+  $('btStatus').textContent = `Beat at ${elapsed.toFixed(3)}s`;
+}
+document.addEventListener('keydown', btHandleKey);
+
+function finishBeatTap() {
+  if (!btActive) return;
+  btActive = false;
+  if (btAudioEl) { btAudioEl.pause(); btAudioEl = null; }
+  if (btTimerAnim) { cancelAnimationFrame(btTimerAnim); btTimerAnim = null; }
+  if (btBeatTimes.length === 0) {
+    alert('No beats were tapped. No frames created.');
+    $('btMod').classList.remove('sh');
+    return;
+  }
+  if (btTargetGroupId) finishBeatTapGroup();
+  else finishBeatTapAll();
+}
+
+function finishBeatTapAll() {
+  frames = [];
+  const firstBeatTime = btBeatTimes[0];
+  if (firstBeatTime > 0.001) {
+    const f = makeFrame('Intro', Math.round(firstBeatTime * 1000) / 1000);
+    frames.push(f);
+  }
+  for (let i = 0; i < btBeatTimes.length; i++) {
+    let dur;
+    if (i < btBeatTimes.length - 1) dur = btBeatTimes[i + 1] - btBeatTimes[i];
+    else { dur = btAudioDuration - btBeatTimes[i]; if (dur < 0.01) dur = 1.0; }
+    const f = makeFrame('Beat ' + (i + 1), Math.round(dur * 1000) / 1000);
+    frames.push(f);
+  }
+  cfi = 0;
+  invalidateTimeCache();
+  markDirty();
+  renderAll();
+  $('btMod').classList.remove('sh');
+}
+
+function finishBeatTapGroup() {
+  const gid = btTargetGroupId;
+  const gFrameIndices = getGroupFrames(gid);
+  if (!gFrameIndices.length) {
+    alert('Group has no frames. Cannot apply beats.');
+    $('btMod').classList.remove('sh');
+    return;
+  }
+  const groupAbsStart = frameStartTime(gFrameIndices[0]);
+  const lastGIdx = gFrameIndices[gFrameIndices.length - 1];
+  const groupAbsEnd = frameStartTime(lastGIdx) + frames[lastGIdx].duration;
+  const groupTotalDur = groupAbsEnd - groupAbsStart;
+
+  const newGroupFrames = [];
+  const firstBeatTime = btBeatTimes[0];
+  if (firstBeatTime > 0.001) {
+    const f = makeFrame('Intro', Math.round(firstBeatTime * 1000) / 1000);
+    f.groups = [gid];
+    newGroupFrames.push(f);
+  }
+  for (let i = 0; i < btBeatTimes.length; i++) {
+    let dur;
+    if (i < btBeatTimes.length - 1) dur = btBeatTimes[i + 1] - btBeatTimes[i];
+    else { dur = groupTotalDur - btBeatTimes[i]; if (dur < 0.01) dur = 0.5; }
+    const f = makeFrame('Beat ' + (i + 1), Math.round(dur * 1000) / 1000);
+    f.groups = [gid];
+    newGroupFrames.push(f);
+  }
+  const sorted = [...gFrameIndices].sort((a,b) => b - a);
+  for (const idx of sorted) frames.splice(idx, 1);
+  const insertAt = Math.min(gFrameIndices[0], frames.length);
+  frames.splice(insertAt, 0, ...newGroupFrames);
+  cfi = insertAt;
+  invalidateTimeCache();
+  markDirty();
+  renderAll();
+  $('btMod').classList.remove('sh');
+}
+
+// ========================================================================
+//  KEYBOARD
+// ========================================================================
+document.addEventListener('keydown', e => {
+  if (btActive) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+  if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); toggleMinimize(); return;
+  }
+  switch (e.key.toLowerCase()) {
+    case 'arrowright': goNext(); e.preventDefault(); break;
+    case 'arrowleft': goPrev(); e.preventDefault(); break;
+    case 'arrowup':
+      e.preventDefault();
+      if (frames.length) {
+        const nd = displayDur(frames[cfi].duration) + 0.01;
+        frames[cfi].duration = Math.round(storeDur(nd) * 1e6) / 1e6;
+        invalidateTimeCache(); renderTimeline(); updInfo();
+      }
+      break;
+    case 'arrowdown':
+      e.preventDefault();
+      if (frames.length) {
+        const nd = Math.max(0, displayDur(frames[cfi].duration) - 0.01);
+        frames[cfi].duration = Math.round(storeDur(nd) * 1e6) / 1e6;
+        invalidateTimeCache(); renderTimeline(); updInfo();
+      }
+      break;
+    case ' ': e.preventDefault(); playing ? doStop() : doPlay(); break;
+    case 's': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); doStop(); } break;
+    case 'delete': case 'backspace':
+      if (frames.length) {
+        frames[cfi].strokes = [];
+        drawEditor(); renderTimeline(); updInfo();
+      }
+      break;
+    case 'home': e.preventDefault(); gotoBeginning(); break;
+    case 'a': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); assignGroup(); } break;
+    case 'g': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); groupPlay(); } break;
+    case 'e': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleEraser(); } break;
+    case 'z':
+      if (e.ctrlKey || e.metaKey) { e.preventDefault(); undoStroke(); }
+      break;
+    case 'c': if (e.ctrlKey || e.metaKey) { copyFrame(); e.preventDefault(); } break;
+    case 'v': if (e.ctrlKey || e.metaKey) { pasteFrame(); e.preventDefault(); } break;
+  }
+});
+
+// ========================================================================
+//  INIT
+// ========================================================================
+$('spdSlider').addEventListener('input', onSpeedChange);
+$('spdLbl').addEventListener('click', resetSpeed);
+
+initGL();
+resizeC();
+window.addEventListener('resize', resizeC);
+
+frames = [makeFrame('Start', 1.0)];
+cfi = 0;
+invalidateTimeCache();
+renderAll();
+
+</script>
+</body>
+</html>
